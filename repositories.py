@@ -1,5 +1,6 @@
 from sqlalchemy.orm import sessionmaker
-from models import Base, Student, Grade, Subject, Adviser, Distribution, Theme, AdviserGroup, ThemeSubjectImportance, GradeRecord, StudentGradeRecord, StudentThemeInterest
+from models import ( Student, Grade, Subject, Adviser, Distribution,
+                    Theme, AdviserGroup, ThemeSubjectImportance, GradeRecord, StudentGradeRecord, StudentThemeInterest)
 
 class StudentRepository:
     def __init__(self, engine):
@@ -7,7 +8,7 @@ class StudentRepository:
 
     def add_student(self, firstname, lastname, patronymic, group_student, g):
         session = self.Session()
-        new_student = Student(firstname=firstname, lastname=lastname, patronymic=patronymic, group_student=group_student, g=g)
+        new_student = Student(firstname=firstname, lastname=lastname, patronymic=patronymic, group_student=group_student)
         session.add(new_student)
         session.commit()
         session.close()
@@ -24,7 +25,7 @@ class StudentRepository:
         session.close()
         return student
 
-    def update_student(self, student_id, firstname=None, lastname=None, patronymic=None, group_student=None, g=None):
+    def update_student(self, student_id, firstname=None, lastname=None, patronymic=None, group_student=None):
         session = self.Session()
         student = session.query(Student).filter(Student.student_id == student_id).first()
         if student:
@@ -32,7 +33,6 @@ class StudentRepository:
             if lastname: student.lastname = lastname
             if patronymic: student.patronymic = patronymic
             if group_student: student.group_student = group_student
-            if g is not None: student.g = g
             session.commit()
         session.close()
 

@@ -16,7 +16,7 @@ class Student(Base):
     lastname = Column(String, nullable=False)
     patronymic = Column(String, nullable=False)
     group_student = Column(String, nullable=False)
-    g = Column(Integer, nullable=False)
+
 
 class Adviser(Base):
     __tablename__ = 'advisers'
