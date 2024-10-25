@@ -1,3 +1,4 @@
+from enum import unique
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 import random
@@ -8,7 +9,7 @@ from models import (Base, Student, Adviser, Theme, Subject, Grade, GradeRecord,
                     StudentGradeRecord, StudentThemeInterest, ThemeSubjectImportance, AdviserGroup)
 
 # Создание базы данных
-engine = create_engine('sqlite:///vkr.db')  # Замените на вашу строку подключения
+engine = create_engine('sqlite:///vkr.db')
 Base.metadata.create_all(engine)
 
 # Создание сессии
@@ -18,7 +19,7 @@ session = Session()
 # Инициализация Faker для генерации случайных данных
 fake = Faker()
 
-# Создание 10 преподавателей
+# Создание научных руководителей
 advisers = []
 for _ in range(10):
     adviser = Adviser(
@@ -32,14 +33,22 @@ for _ in range(10):
 session.add_all(advisers)
 session.commit()
 
-# Создание 10 групп советников и назначение их советникам
+# Создание групп научных руководителей
 adviser_groups = []
-for adviser in advisers:
-    adviser_group = AdviserGroup(
-        adviser_id=adviser.adviser_id,  # Связываем группу с советником
-        group_specialization=fake.word()
-    )
-    adviser_groups.append(adviser_group)
+num_groups = 3
+used_advisers = set()
+
+for group_id in range(num_groups):
+    unique_advisers = random.sample([adviser for adviser in advisers if adviser.adviser_id not in used_advisers],
+                                    k=random.randint(1, 3))
+
+    for adviser in unique_advisers:
+        adviser_group = AdviserGroup(
+            adviser_id=adviser.adviser_id,
+            group_specialization=fake.word()
+        )
+        adviser_groups.append(adviser_group)
+        used_advisers.add(adviser.adviser_id)
 
 session.add_all(adviser_groups)
 session.commit()
@@ -52,7 +61,6 @@ for _ in range(20):
         lastname=fake.last_name(),
         patronymic=fake.first_name(),
         group_student=fake.word(),
-        g=random.randint(1, 5)
     )
     students.append(student)
 
@@ -61,13 +69,16 @@ session.commit()
 
 # Создание 30 тем
 themes = []
-for _ in range(30):
-    theme = Theme(
-        theme_name=fake.sentence(nb_words=3),
-        interest_level=random.randint(1, 10),
-        adviser_group_id=random.choice(adviser_groups).adviser_group_id  # Используем группу советников
-    )
-    themes.append(theme)
+if adviser_groups:  # Проверяем, что группы существуют
+    for _ in range(30):
+        theme = Theme(
+            theme_name=fake.sentence(nb_words=3),
+            interest_level=random.randint(1, 10),
+            adviser_group_id=random.choice(adviser_groups).adviser_group_id  # Используем группу советников
+        )
+        themes.append(theme)
+else:
+    print("Нет доступных групп научных руководителей для создания тем.")
 
 session.add_all(themes)
 session.commit()
@@ -87,7 +98,7 @@ session.commit()
 grades = []
 for _ in range(30):
     grade = Grade(
-        grade=random.randint(1, 5)
+        grade=random.randint( 1, 5)
     )
     grades.append(grade)
 
@@ -110,7 +121,7 @@ session.commit()
 # Создание интересов тем для студентов
 student_theme_interests = []
 for student in students:
-    for _ in range(4):  # Каждому студенту можно дать от 1 до 3 интересов
+    for _ in range(4):
         student_theme_interest = StudentThemeInterest(
             student_id=student.student_id,
             theme_id=random.choice(themes).theme_id,
