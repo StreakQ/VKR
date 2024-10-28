@@ -6,7 +6,7 @@ class StudentRepository:
     def __init__(self, engine):
         self.Session = sessionmaker(bind=engine)
 
-    def add_student(self, firstname, lastname, patronymic, group_student, g):
+    def add_student(self, firstname, lastname, patronymic, group_student):
         session = self.Session()
         new_student = Student(firstname=firstname, lastname=lastname, patronymic=patronymic, group_student=group_student)
         session.add(new_student)
@@ -169,12 +169,20 @@ class AdviserRepository:
 
 
 class DistributionRepository:
-    def __init__(self, engine):
-        self.Session = sessionmaker(bind=engine)
+    def __init__(self, engine, student_grade_record_repo, student_theme_interest_repo, theme_subject_importance_repo):
+        self.engine = engine
+        self.student_grade_record_repo = student_grade_record_repo
+        self.student_theme_interest_repo = student_theme_interest_repo
+        self.theme_subject_importance_repo = theme_subject_importance_repo
+        self.Session = sessionmaker(bind=self.engine)  # Создаем фабрику сессий
 
     def add_distribution(self, theme_subject_importance_id, student_grade_record_id, student_theme_interest_id):
         session = self.Session()
-        new_distribution = Distribution(theme_subject_importance_id=theme_subject_importance_id, student_grade_record_id=student_grade_record_id, student_theme_interest_id=student_theme_interest_id)
+        new_distribution = Distribution(
+            theme_subject_importance_id=theme_subject_importance_id,
+            student_grade_record_id=student_grade_record_id,
+            student_theme_interest_id=student_theme_interest_id
+        )
         session.add(new_distribution)
         session.commit()
         session.close()
@@ -195,9 +203,12 @@ class DistributionRepository:
         session = self.Session()
         distribution_record = session.query(Distribution).filter(Distribution.distribution_id == distribution_id).first()
         if distribution_record:
-            if theme_subject_importance_id is not None: distribution_record.theme_subject_importance_id = theme_subject_importance_id
-            if student_grade_record_id is not None: distribution_record.student_grade_record_id = student_grade_record_id
-            if student_theme_interest_id is not None: distribution_record.student_theme_interest_id = student_theme_interest_id
+            if theme_subject_importance_id is not None:
+                distribution_record.theme_subject_importance_id = theme_subject_importance_id
+            if student_grade_record_id is not None:
+                distribution_record.student_grade_record_id = student_grade_record_id
+            if student_theme_interest_id is not None:
+                distribution_record.student_theme_interest_id = student_theme_interest_id
             session.commit()
         session.close()
 
@@ -208,7 +219,6 @@ class DistributionRepository:
             session.delete(distribution_record)
             session.commit()
         session.close()
-
 
 class ThemeRepository:
     def __init__(self, engine):
@@ -312,13 +322,15 @@ class ThemeSubjectImportanceRepository:
 
     def get_theme_subject_importance_by_id(self, theme_subject_importance_id):
         session = self.Session()
-        theme_subject_importance = session.query(ThemeSubjectImportance).filter(ThemeSubjectImportance.theme_subject_importance_id == theme_subject_importance_id).first()
+        theme_subject_importance = session.query(ThemeSubjectImportance).filter(
+            ThemeSubjectImportance.theme_subject_importance_id == theme_subject_importance_id).first()
         session.close()
         return theme_subject_importance
 
     def update_theme_subject_importance(self, theme_subject_importance_id, theme_id=None, subject_id=None, weight=None):
         session = self.Session()
-        theme_subject_importance_record = session.query(ThemeSubjectImportance).filter(ThemeSubjectImportance.theme_subject_importance_id == theme_subject_importance_id).first()
+        theme_subject_importance_record = session.query(ThemeSubjectImportance).filter(
+            ThemeSubjectImportance.theme_subject_importance_id == theme_subject_importance_id).first()
         if theme_subject_importance_record:
             if theme_id is not None: theme_subject_importance_record.theme_id = theme_id
             if subject_id is not None: theme_subject_importance_record.subject_id = subject_id
@@ -328,7 +340,8 @@ class ThemeSubjectImportanceRepository:
 
     def delete_theme_subject_importance(self, theme_subject_importance_id):
         session = self.Session()
-        theme_subject_importance_record = session.query(ThemeSubjectImportance).filter(ThemeSubjectImportance.theme_subject_importance_id == theme_subject_importance_id).first()
+        theme_subject_importance_record = session.query(ThemeSubjectImportance).filter(
+            ThemeSubjectImportance.theme_subject_importance_id == theme_subject_importance_id).first()
         if theme_subject_importance_record:
             session.delete(theme_subject_importance_record)
             session.commit()
@@ -395,13 +408,15 @@ class StudentGradeRecordRepository:
 
     def get_student_grade_record_by_id(self, student_grade_record_id):
         session = self.Session()
-        student_grade_record = session.query(StudentGradeRecord).filter(StudentGradeRecord.student_grade_record_id == student_grade_record_id).first()
+        student_grade_record = session.query(StudentGradeRecord).filter(
+            StudentGradeRecord.student_grade_record_id == student_grade_record_id).first()
         session.close()
         return student_grade_record
 
     def update_student_grade_record(self, student_grade_record_id, student_id=None, grade_record_id=None):
         session = self.Session()
-        student_grade_record_record = session.query(StudentGradeRecord).filter(StudentGradeRecord.student_grade_record_id == student_grade_record_id).first()
+        student_grade_record_record = session.query(StudentGradeRecord).filter(
+            StudentGradeRecord.student_grade_record_id == student_grade_record_id).first()
         if student_grade_record_record:
             if student_id is not None: student_grade_record_record.student_id = student_id
             if grade_record_id is not None: student_grade_record_record.grade_record_id = grade_record_id
@@ -410,7 +425,8 @@ class StudentGradeRecordRepository:
 
     def delete_student_grade_record(self, student_grade_record_id):
         session = self.Session()
-        student_grade_record_record = session.query(StudentGradeRecord).filter(StudentGradeRecord.student_grade_record_id == student_grade_record_id).first()
+        student_grade_record_record = session.query(StudentGradeRecord).filter(
+            StudentGradeRecord.student_grade_record_id == student_grade_record_id).first()
         if student_grade_record_record:
             session.delete(student_grade_record_record)
             session.commit()
@@ -436,13 +452,15 @@ class StudentThemeInterestRepository:
 
     def get_student_theme_interest_by_id(self, student_theme_interest_id):
         session = self.Session()
-        student_theme_interest = session.query(StudentThemeInterest).filter(StudentThemeInterest.student_theme_interest_id == student_theme_interest_id).first()
+        student_theme_interest = session.query(StudentThemeInterest).filter(
+            StudentThemeInterest.student_theme_interest_id == student_theme_interest_id).first()
         session.close()
         return student_theme_interest
 
     def update_student_theme_interest(self, student_theme_interest_id, student_id=None, theme_id=None, interest_level=None):
         session = self.Session()
-        student_theme_interest_record = session.query(StudentThemeInterest).filter(StudentThemeInterest.student_theme_interest_id == student_theme_interest_id).first()
+        student_theme_interest_record = session.query(StudentThemeInterest).filter(
+            StudentThemeInterest.student_theme_interest_id == student_theme_interest_id).first()
         if student_theme_interest_record:
             if student_id is not None: student_theme_interest_record.student_id = student_id
             if theme_id is not None: student_theme_interest_record.theme_id = theme_id
@@ -452,7 +470,8 @@ class StudentThemeInterestRepository:
 
     def delete_student_theme_interest(self, student_theme_interest_id):
         session = self.Session()
-        student_theme_interest_record = session.query(StudentThemeInterest).filter(StudentThemeInterest.student_theme_interest_id == student_theme_interest_id).first()
+        student_theme_interest_record = session.query(StudentThemeInterest).filter(
+            StudentThemeInterest.student_theme_interest_id == student_theme_interest_id).first()
         if student_theme_interest_record:
             session.delete(student_theme_interest_record)
             session.commit()
