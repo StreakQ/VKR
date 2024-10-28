@@ -1,6 +1,8 @@
 from sqlalchemy.orm import sessionmaker
 from models import ( Student, Grade, Subject, Adviser, Distribution,
                     Theme, AdviserGroup, ThemeSubjectImportance, GradeRecord, StudentGradeRecord, StudentThemeInterest)
+from faker import Faker
+fake = Faker()
 
 class StudentRepository:
     def __init__(self, engine):
@@ -12,6 +14,10 @@ class StudentRepository:
         session.add(new_student)
         session.commit()
         session.close()
+
+    def add_initial_students(self, count=10):
+        for _ in range(count):
+            self.add_student(fake.first_name(), fake.last_name(), fake.first_name_male(), fake.word())
 
     def get_all_students(self):
         session = self.Session()
@@ -44,6 +50,11 @@ class StudentRepository:
             session.commit()
         session.close()
 
+    def display_all_students(self):
+        students = self.get_all_students()
+        for student in students:
+            print(f"{student.firstname} {student.lastname} {student.patronymic}, {student.group_student}")
+
 
 class GradeRepository:
     def __init__(self, engine):
@@ -55,6 +66,10 @@ class GradeRepository:
         session.add(new_grade)
         session.commit()
         session.close()
+
+    def add_initial_grades(self, count=20):
+        for _ in range(count):
+            self.add_grade(fake.random_int(min=3, max=5))
 
     def get_all_grades(self):
         session = self.Session()
@@ -84,6 +99,11 @@ class GradeRepository:
             session.commit()
         session.close()
 
+    def display_all_grades(self):
+        grades = self.get_all_grades()
+        for grade in grades:
+            print(f"Оценка: {grade.grade}")
+
 
 class SubjectRepository:
     def __init__(self, engine):
@@ -95,6 +115,10 @@ class SubjectRepository:
         session.add(new_subject)
         session.commit()
         session.close()
+
+    def add_initial_subjects(self, count=5):
+        for _ in range(count):
+            self.add_subject(fake.word())
 
     def get_all_subjects(self):
         session = self.Session()
@@ -124,6 +148,11 @@ class SubjectRepository:
             session.commit()
         session.close()
 
+    def display_all_subjects(self):
+        subjects = self.get_all_subjects()
+        for subject in subjects:
+            print(f"Предмет: {subject.subject_name}")
+
 
 class AdviserRepository:
     def __init__(self, engine):
@@ -135,6 +164,11 @@ class AdviserRepository:
         session.add(new_adviser)
         session.commit()
         session.close()
+
+    def add_initial_advisers(self, count=5):
+        for _ in range(count):
+            self.add_adviser(fake.first_name(), fake.last_name(), fake.first_name_male(),
+                             fake.random_int(min=1, max=10))
 
     def get_all_advisers(self):
         session = self.Session()
@@ -166,6 +200,11 @@ class AdviserRepository:
             session.delete(adviser_record)
             session.commit()
         session.close()
+
+    def display_all_advisers(self):
+        advisers = self.get_all_advisers()
+        for adviser in advisers:
+            print(f"{adviser.firstname} {adviser.lastname} {adviser.patronymic}, Мест: {adviser.number_of_places}")
 
 
 class DistributionRepository:
@@ -231,6 +270,13 @@ class ThemeRepository:
         session.commit()
         session.close()
 
+    def add_initial_themes(self, count=5):
+        for _ in range(count):
+            theme_name = fake.sentence(nb_words=3)
+            interest_level = fake.random_int(min=1, max=4)
+            adviser_group_id = fake.random_int(min=1, max=5)
+            self.add_theme(theme_name, interest_level, adviser_group_id)
+
     def get_all_themes(self):
         session = self.Session()
         themes = session.query(Theme).all()
@@ -261,10 +307,17 @@ class ThemeRepository:
             session.commit()
         session.close()
 
+    def display_all_themes(self):
+        themes = self.get_all_themes()
+        for theme in themes:
+            print(
+                f"Тема: {theme.theme_name}, Уровень интереса: {theme.interest_level}, Группа консультанта: {theme.adviser_group_id}")
+
 
 class AdviserGroupRepository:
-    def __init__(self, engine):
+    def __init__(self, engine, adviser_repository):
         self.Session = sessionmaker(bind=engine)
+        self.adviser_repository = adviser_repository  # Сохраняем экземпляр AdviserRepository
 
     def add_adviser_group(self, adviser_id, group_specialization):
         session = self.Session()
@@ -273,35 +326,33 @@ class AdviserGroupRepository:
         session.commit()
         session.close()
 
+    def add_initial_adviser_groups(self, count=5):
+        existing_advisers = self.adviser_repository.get_all_advisers()
+        adviser_ids = [adviser.adviser_id for adviser in existing_advisers]
+        if count > len(adviser_ids):
+            count = len(adviser_ids)
+
+        added_advisers = set()
+
+        for _ in range(count):
+            adviser_id = fake.random_element(elements=adviser_ids)
+            if adviser_id in added_advisers:
+                continue
+
+            group_specialization = fake.word()  # Генерируем случайную специализацию группы
+            self.add_adviser_group(adviser_id, group_specialization)
+            added_advisers.add(adviser_id)  # Добавляем консультанта в множество добавленных
+
     def get_all_adviser_groups(self):
         session = self.Session()
         adviser_groups = session.query(AdviserGroup).all()
         session.close()
         return adviser_groups
 
-    def get_adviser_group_by_id(self, adviser_group_id):
-        session = self.Session()
-        adviser_group = session.query(AdviserGroup).filter(AdviserGroup.adviser_group_id == adviser_group_id).first()
-        session.close()
-        return adviser_group
-
-    def update_adviser_group(self, adviser_group_id, adviser_id=None, group_specialization=None):
-        session = self.Session()
-        adviser_group_record = session.query(AdviserGroup).filter(AdviserGroup.adviser_group_id == adviser_group_id).first()
-        if adviser_group_record:
-            if adviser_id is not None: adviser_group_record.adviser_id = adviser_id
-            if group_specialization: adviser_group_record.group_specialization = group_specialization
-            session.commit()
-        session.close()
-
-    def delete_adviser_group(self, adviser_group_id):
-        session = self.Session()
-        adviser_group_record = session.query(AdviserGroup).filter(AdviserGroup.adviser_group_id == adviser_group_id).first()
-        if adviser_group_record:
-            session.delete(adviser_group_record)
-            session.commit()
-        session.close()
-
+    def display_all_adviser_groups(self):
+        adviser_groups = self.get_all_adviser_groups()
+        for adviser_group in adviser_groups:
+            print(f"Группа консультанта ID: {adviser_group.adviser_group_id}, Специализация: {adviser_group.group_specialization}, Консультант ID: {adviser_group.adviser_id}")
 
 class ThemeSubjectImportanceRepository:
     def __init__(self, engine):
