@@ -3,3 +3,5 @@ Flask==2.2.3                   # Веб-фреймворк
 Flask-SQLAlchemy==2.5.1        # Расширение для интеграции SQLAlchemy с Flask
 requests==2.28.1               # Библиотека для работы с HTTP-запросами
 
+
+Faker~=30.8.1
