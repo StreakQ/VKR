@@ -2,7 +2,9 @@ from sqlalchemy.orm import sessionmaker
 from models import ( Student, Grade, Subject, Adviser, Distribution,
                     Theme, AdviserGroup, ThemeSubjectImportance, GradeRecord, StudentGradeRecord, StudentThemeInterest)
 from faker import Faker
-fake = Faker()
+
+
+fake = Faker('ru_RU')
 
 class StudentRepository:
     def __init__(self, engine):
@@ -17,7 +19,7 @@ class StudentRepository:
 
     def add_initial_students(self, count=10):
         for _ in range(count):
-            self.add_student(fake.first_name(), fake.last_name(), fake.first_name_male(), fake.word())
+            self.add_student(fake.first_name_male(), fake.last_name_male(), fake.first_name_male(), f"A-{fake.random_int(1,3)}-21")
 
     def get_all_students(self):
         session = self.Session()
@@ -53,7 +55,13 @@ class StudentRepository:
     def display_all_students(self):
         students = self.get_all_students()
         for student in students:
-            print(f"{student.firstname} {student.lastname} {student.patronymic}, {student.group_student}")
+            print(f"{student.firstname} {student.lastname}  {student.group_student}")
+
+    def clear_all_students(self):
+        session = self.Session()
+        session.query(Student).delete()
+        session.commit()
+        session.close()
 
 
 class GradeRepository:
@@ -104,6 +112,12 @@ class GradeRepository:
         for grade in grades:
             print(f"Оценка: {grade.grade}")
 
+    def clear_all_grades(self):
+        session = self.Session()
+        session.query(Grade).delete()
+        session.commit()
+        session.close()
+
 
 class SubjectRepository:
     def __init__(self, engine):
@@ -153,6 +167,12 @@ class SubjectRepository:
         for subject in subjects:
             print(f"Предмет: {subject.subject_name}")
 
+    def clear_all_subjects(self):
+        session = self.Session()
+        session.query(Subject).delete()
+        session.commit()
+        session.close()
+
 
 class AdviserRepository:
     def __init__(self, engine):
@@ -167,7 +187,7 @@ class AdviserRepository:
 
     def add_initial_advisers(self, count=5):
         for _ in range(count):
-            self.add_adviser(fake.first_name(), fake.last_name(), fake.first_name_male(),
+            self.add_adviser(fake.first_name_male(), fake.last_name_male(), fake.first_name_male(),
                              fake.random_int(min=1, max=10))
 
     def get_all_advisers(self):
@@ -205,6 +225,326 @@ class AdviserRepository:
         advisers = self.get_all_advisers()
         for adviser in advisers:
             print(f"{adviser.firstname} {adviser.lastname} {adviser.patronymic}, Мест: {adviser.number_of_places}")
+
+    def clear_all_advisers(self):
+        session = self.Session()
+        session.query(Adviser).delete()
+        session.commit()
+        session.close()
+
+
+class ThemeRepository:
+    def __init__(self, engine):
+        self.Session = sessionmaker(bind=engine)
+
+    def add_theme(self, theme_name, interest_level, adviser_group_id):
+        session = self.Session()
+        new_theme = Theme(theme_name=theme_name, interest_level=interest_level, adviser_group_id=adviser_group_id)
+        session.add(new_theme)
+        session.commit()
+        session.close()
+
+    def add_initial_themes(self, count=5):
+        for _ in range(count):
+            theme_name = fake.sentence(nb_words=4)
+            interest_level = fake.random_int(min=1, max=4)
+            adviser_group_id = fake.random_int(min=1, max=5)
+            self.add_theme(theme_name, interest_level, adviser_group_id)
+
+    def get_all_themes(self):
+        session = self.Session()
+        themes = session.query(Theme).all()
+        session.close()
+        return themes
+
+    def get_theme_by_id(self, theme_id):
+        session = self.Session()
+        theme = session.query(Theme).filter(Theme.theme_id == theme_id).first()
+        session.close()
+        return theme
+
+    def update_theme(self, theme_id, theme_name=None, interest_level=None, adviser_group_id=None):
+        session = self.Session()
+        theme_record = session.query(Theme).filter(Theme.theme_id == theme_id).first()
+        if theme_record:
+            if theme_name: theme_record.theme_name = theme_name
+            if interest_level is not None: theme_record.interest_level = interest_level
+            if adviser_group_id is not None: theme_record.adviser_group_id = adviser_group_id
+            session.commit()
+        session.close()
+
+    def delete_theme(self, theme_id):
+        session = self.Session()
+        theme_record = session.query(Theme).filter(Theme.theme_id == theme_id).first()
+        if theme_record:
+            session.delete(theme_record)
+            session.commit()
+        session.close()
+
+    def display_all_themes(self):
+        themes = self.get_all_themes()
+        for theme in themes:
+            print(
+                f"Тема: {theme.theme_name}, Уровень интереса: {theme.interest_level}, Группа консультанта: {theme.adviser_group_id}")
+
+    def clear_all_themes(self):
+        session = self.Session()
+        session.query(Theme).delete()
+        session.commit()
+        session.close()
+
+
+class AdviserGroupRepository:
+    def __init__(self, engine, adviser_repository):
+        self.Session = sessionmaker(bind=engine)
+        self.adviser_repository = adviser_repository  # Сохраняем экземпляр AdviserRepository
+
+    def add_adviser_group(self, adviser_id, group_specialization):
+        session = self.Session()
+        new_adviser_group = AdviserGroup(adviser_id=adviser_id, group_specialization=group_specialization)
+        session.add(new_adviser_group)
+        session.commit()
+        session.close()
+
+    def add_initial_adviser_groups(self, count=5):
+        existing_advisers = self.adviser_repository.get_all_advisers()
+        adviser_ids = [adviser.adviser_id for adviser in existing_advisers]
+        if count > len(adviser_ids):
+            count = len(adviser_ids)
+
+        added_advisers = set()
+
+        for _ in range(count):
+            adviser_id = fake.random_element(elements=adviser_ids)
+            if adviser_id in added_advisers:
+                continue
+
+            group_specialization = fake.word()  # Generate a random group specialization
+            if not self.get_adviser_group_by_adviser_id(adviser_id):  # Check if adviser_id already exists
+                self.add_adviser_group(adviser_id, group_specialization)
+                added_advisers.add(adviser_id)  # Add adviser_id to the set of added advisers
+
+    def get_all_adviser_groups(self):
+        session = self.Session()
+        adviser_groups = session.query(AdviserGroup).all()
+        session.close()
+        return adviser_groups
+
+    def get_adviser_group_by_adviser_id(self, adviser_id):
+        session = self.Session()
+        adviser_group = session.query(AdviserGroup).filter(AdviserGroup.adviser_id == adviser_id).first()
+        session.close()
+        return adviser_group
+
+    def display_all_adviser_groups(self):
+        adviser_groups = self.get_all_adviser_groups()
+        for adviser_group in adviser_groups:
+            print(f"Группа консультанта ID: {adviser_group.adviser_group_id}, Специализация: "
+                  f"{adviser_group.group_specialization}, Консультант ID: {adviser_group.adviser_id}")
+
+    def clear_all_adviser_groups(self):
+        session = self.Session()
+        session.query(AdviserGroup).delete()
+        session.commit()
+        session.close()
+
+class ThemeSubjectImportanceRepository:
+    def __init__(self, engine):
+        self.Session = sessionmaker(bind=engine)
+
+    def add_theme_subject_importance(self, theme_id, subject_id, weight):
+        session = self.Session()
+        new_theme_subject_importance = ThemeSubjectImportance(theme_id=theme_id, subject_id=subject_id, weight=weight)
+        session.add(new_theme_subject_importance)
+        session.commit()
+        session.close()
+
+    def get_all_theme_subject_importances(self):
+        session = self.Session()
+        theme_subject_importances = session.query(ThemeSubjectImportance).all()
+        session.close()
+        return theme_subject_importances
+
+    def get_theme_subject_importance_by_id(self, theme_subject_importance_id):
+        session = self.Session()
+        theme_subject_importance = session.query(ThemeSubjectImportance).filter(
+            ThemeSubjectImportance.theme_subject_importance_id == theme_subject_importance_id).first()
+        session.close()
+        return theme_subject_importance
+
+    def update_theme_subject_importance(self, theme_subject_importance_id, theme_id=None, subject_id=None, weight=None):
+        session = self.Session()
+        theme_subject_importance_record = session.query(ThemeSubjectImportance).filter(
+            ThemeSubjectImportance.theme_subject_importance_id == theme_subject_importance_id).first()
+        if theme_subject_importance_record:
+            if theme_id is not None: theme_subject_importance_record.theme_id = theme_id
+            if subject_id is not None: theme_subject_importance_record.subject_id = subject_id
+            if weight is not None: theme_subject_importance_record.weight = weight
+            session.commit()
+        session.close()
+
+    def delete_theme_subject_importance(self, theme_subject_importance_id):
+        session = self.Session()
+        theme_subject_importance_record = session.query(ThemeSubjectImportance).filter(
+            ThemeSubjectImportance.theme_subject_importance_id == theme_subject_importance_id).first()
+        if theme_subject_importance_record:
+            session.delete(theme_subject_importance_record)
+            session.commit()
+        session.close()
+
+    def clear_all_theme_subject_importance(self):
+        session = self.Session()
+        session.query(ThemeSubjectImportance).delete()
+        session.commit()
+        session.close()
+
+
+class GradeRecordRepository:
+    def __init__(self, engine):
+        self.Session = sessionmaker(bind=engine)
+
+    def add_grade_record(self, subject_id, grade_id):
+        session = self.Session()
+        new_grade_record = GradeRecord(subject_id=subject_id, grade_id=grade_id)
+        session.add(new_grade_record)
+        session.commit()
+        session.close()
+
+    def get_all_grade_records(self):
+        session = self.Session()
+        grade_records = session.query(GradeRecord).all()
+        session.close()
+        return grade_records
+
+    def get_grade_record_by_id(self, grade_record_id):
+        session = self.Session()
+        grade_record = session.query(GradeRecord).filter(GradeRecord.grade_record_id == grade_record_id).first()
+        session.close()
+        return grade_record
+
+    def update_grade_record(self, grade_record_id, subject_id=None, grade_id=None):
+        session = self.Session()
+        grade_record_record = session.query(GradeRecord).filter(GradeRecord.grade_record_id == grade_record_id).first()
+        if grade_record_record:
+            if subject_id is not None: grade_record_record.subject_id = subject_id
+            if grade_id is not None: grade_record_record.grade_id = grade_id
+            session.commit()
+        session.close()
+
+    def delete_grade_record(self, grade_record_id):
+        session = self.Session()
+        grade_record_record = session.query(GradeRecord).filter(GradeRecord.grade_record_id == grade_record_id).first()
+        if grade_record_record:
+            session.delete(grade_record_record)
+            session.commit()
+        session.close()
+
+    def clear_all_grade_records(self):
+        session = self.Session()
+        session.query(GradeRecord).delete()
+        session.commit()
+        session.close()
+
+
+class StudentGradeRecordRepository:
+    def __init__(self, engine):
+        self.Session = sessionmaker(bind=engine)
+
+    def add_student_grade_record(self, student_id, grade_record_id):
+        session = self.Session()
+        new_student_grade_record = StudentGradeRecord(student_id=student_id, grade_record_id=grade_record_id)
+        session.add(new_student_grade_record)
+        session.commit()
+        session.close()
+
+    def get_all_student_grade_records(self):
+        session = self.Session()
+        student_grade_records = session.query(StudentGradeRecord).all()
+        session.close()
+        return student_grade_records
+
+    def get_student_grade_record_by_id(self, student_grade_record_id):
+        session = self.Session()
+        student_grade_record = session.query(StudentGradeRecord).filter(
+            StudentGradeRecord.student_grade_record_id == student_grade_record_id).first()
+        session.close()
+        return student_grade_record
+
+    def update_student_grade_record(self, student_grade_record_id, student_id=None, grade_record_id=None):
+        session = self.Session()
+        student_grade_record_record = session.query(StudentGradeRecord).filter(
+            StudentGradeRecord.student_grade_record_id == student_grade_record_id).first()
+        if student_grade_record_record:
+            if student_id is not None: student_grade_record_record.student_id = student_id
+            if grade_record_id is not None: student_grade_record_record.grade_record_id = grade_record_id
+            session.commit()
+        session.close()
+
+    def delete_student_grade_record(self, student_grade_record_id):
+        session = self.Session()
+        student_grade_record_record = session.query(StudentGradeRecord).filter(
+            StudentGradeRecord.student_grade_record_id == student_grade_record_id).first()
+        if student_grade_record_record:
+            session.delete(student_grade_record_record)
+            session.commit()
+        session.close()
+
+    def clear_all_student_grade_records(self):
+        session = self.Session()
+        session.query(StudentGradeRecord).delete()
+        session.commit()
+        session.close()
+
+
+class StudentThemeInterestRepository:
+    def __init__(self, engine):
+        self.Session = sessionmaker(bind=engine)
+
+    def add_student_theme_interest(self, student_id, theme_id, interest_level):
+        session = self.Session()
+        new_student_theme_interest = StudentThemeInterest(student_id=student_id, theme_id=theme_id, interest_level=interest_level)
+        session.add(new_student_theme_interest)
+        session.commit()
+        session.close()
+
+    def get_all_student_theme_interests(self):
+        session = self.Session()
+        student_theme_interests = session.query(StudentThemeInterest).all()
+        session.close()
+        return student_theme_interests
+
+    def get_student_theme_interest_by_id(self, student_theme_interest_id):
+        session = self.Session()
+        student_theme_interest = session.query(StudentThemeInterest).filter(
+            StudentThemeInterest.student_theme_interest_id == student_theme_interest_id).first()
+        session.close()
+        return student_theme_interest
+
+    def update_student_theme_interest(self, student_theme_interest_id, student_id=None, theme_id=None, interest_level=None):
+        session = self.Session()
+        student_theme_interest_record = session.query(StudentThemeInterest).filter(
+            StudentThemeInterest.student_theme_interest_id == student_theme_interest_id).first()
+        if student_theme_interest_record:
+            if student_id is not None: student_theme_interest_record.student_id = student_id
+            if theme_id is not None: student_theme_interest_record.theme_id = theme_id
+            if interest_level is not None: student_theme_interest_record.interest_level = interest_level
+            session.commit()
+        session.close()
+
+    def delete_student_theme_interest(self, student_theme_interest_id):
+        session = self.Session()
+        student_theme_interest_record = session.query(StudentThemeInterest).filter(
+            StudentThemeInterest.student_theme_interest_id == student_theme_interest_id).first()
+        if student_theme_interest_record:
+            session.delete(student_theme_interest_record)
+            session.commit()
+        session.close()
+
+    def clear_all_student_theme_interests(self):
+        session = self.Session()
+        session.query(StudentThemeInterest).delete()
+        session.commit()
+        session.close()
 
 
 class DistributionRepository:
@@ -259,271 +599,33 @@ class DistributionRepository:
             session.commit()
         session.close()
 
-class ThemeRepository:
-    def __init__(self, engine):
-        self.Session = sessionmaker(bind=engine)
-
-    def add_theme(self, theme_name, interest_level, adviser_group_id):
+    def clear_all_distributions(self):
         session = self.Session()
-        new_theme = Theme(theme_name=theme_name, interest_level=interest_level, adviser_group_id=adviser_group_id)
-        session.add(new_theme)
+        session.query(Distribution).delete()
         session.commit()
         session.close()
 
-    def add_initial_themes(self, count=5):
-        for _ in range(count):
-            theme_name = fake.sentence(nb_words=3)
-            interest_level = fake.random_int(min=1, max=4)
-            adviser_group_id = fake.random_int(min=1, max=5)
-            self.add_theme(theme_name, interest_level, adviser_group_id)
 
-    def get_all_themes(self):
-        session = self.Session()
-        themes = session.query(Theme).all()
-        session.close()
-        return themes
+def clear_all_data(engine):
+    student_repo = StudentRepository(engine)
+    grade_repo = GradeRepository(engine)
+    subject_repo = SubjectRepository(engine)
+    adviser_repo = AdviserRepository(engine)
+    distribution_repo = DistributionRepository(engine, None, None, None)  # Замените None на реальные репозитории
+    theme_repo = ThemeRepository(engine)
+    adviser_group_repo = AdviserGroupRepository(engine, adviser_repo)
+    theme_subject_importance_repo = ThemeSubjectImportanceRepository(engine)
+    grade_record_repo = GradeRecordRepository(engine)
+    student_grade_record_repo = StudentGradeRecordRepository(engine)
+    student_theme_interest_repo = StudentThemeInterestRepository(engine)
 
-    def get_theme_by_id(self, theme_id):
-        session = self.Session()
-        theme = session.query(Theme).filter(Theme.theme_id == theme_id).first()
-        session.close()
-        return theme
-
-    def update_theme(self, theme_id, theme_name=None, interest_level=None, adviser_group_id=None):
-        session = self.Session()
-        theme_record = session.query(Theme).filter(Theme.theme_id == theme_id).first()
-        if theme_record:
-            if theme_name: theme_record.theme_name = theme_name
-            if interest_level is not None: theme_record.interest_level = interest_level
-            if adviser_group_id is not None: theme_record.adviser_group_id = adviser_group_id
-            session.commit()
-        session.close()
-
-    def delete_theme(self, theme_id):
-        session = self.Session()
-        theme_record = session.query(Theme).filter(Theme.theme_id == theme_id).first()
-        if theme_record:
-            session.delete(theme_record)
-            session.commit()
-        session.close()
-
-    def display_all_themes(self):
-        themes = self.get_all_themes()
-        for theme in themes:
-            print(
-                f"Тема: {theme.theme_name}, Уровень интереса: {theme.interest_level}, Группа консультанта: {theme.adviser_group_id}")
-
-
-class AdviserGroupRepository:
-    def __init__(self, engine, adviser_repository):
-        self.Session = sessionmaker(bind=engine)
-        self.adviser_repository = adviser_repository  # Сохраняем экземпляр AdviserRepository
-
-    def add_adviser_group(self, adviser_id, group_specialization):
-        session = self.Session()
-        new_adviser_group = AdviserGroup(adviser_id=adviser_id, group_specialization=group_specialization)
-        session.add(new_adviser_group)
-        session.commit()
-        session.close()
-
-    def add_initial_adviser_groups(self, count=5):
-        existing_advisers = self.adviser_repository.get_all_advisers()
-        adviser_ids = [adviser.adviser_id for adviser in existing_advisers]
-        if count > len(adviser_ids):
-            count = len(adviser_ids)
-
-        added_advisers = set()
-
-        for _ in range(count):
-            adviser_id = fake.random_element(elements=adviser_ids)
-            if adviser_id in added_advisers:
-                continue
-
-            group_specialization = fake.word()  # Генерируем случайную специализацию группы
-            self.add_adviser_group(adviser_id, group_specialization)
-            added_advisers.add(adviser_id)  # Добавляем консультанта в множество добавленных
-
-    def get_all_adviser_groups(self):
-        session = self.Session()
-        adviser_groups = session.query(AdviserGroup).all()
-        session.close()
-        return adviser_groups
-
-    def display_all_adviser_groups(self):
-        adviser_groups = self.get_all_adviser_groups()
-        for adviser_group in adviser_groups:
-            print(f"Группа консультанта ID: {adviser_group.adviser_group_id}, Специализация: {adviser_group.group_specialization}, Консультант ID: {adviser_group.adviser_id}")
-
-class ThemeSubjectImportanceRepository:
-    def __init__(self, engine):
-        self.Session = sessionmaker(bind=engine)
-
-    def add_theme_subject_importance(self, theme_id, subject_id, weight):
-        session = self.Session()
-        new_theme_subject_importance = ThemeSubjectImportance(theme_id=theme_id, subject_id=subject_id, weight=weight)
-        session.add(new_theme_subject_importance)
-        session.commit()
-        session.close()
-
-    def get_all_theme_subject_importances(self):
-        session = self.Session()
-        theme_subject_importances = session.query(ThemeSubjectImportance).all()
-        session.close()
-        return theme_subject_importances
-
-    def get_theme_subject_importance_by_id(self, theme_subject_importance_id):
-        session = self.Session()
-        theme_subject_importance = session.query(ThemeSubjectImportance).filter(
-            ThemeSubjectImportance.theme_subject_importance_id == theme_subject_importance_id).first()
-        session.close()
-        return theme_subject_importance
-
-    def update_theme_subject_importance(self, theme_subject_importance_id, theme_id=None, subject_id=None, weight=None):
-        session = self.Session()
-        theme_subject_importance_record = session.query(ThemeSubjectImportance).filter(
-            ThemeSubjectImportance.theme_subject_importance_id == theme_subject_importance_id).first()
-        if theme_subject_importance_record:
-            if theme_id is not None: theme_subject_importance_record.theme_id = theme_id
-            if subject_id is not None: theme_subject_importance_record.subject_id = subject_id
-            if weight is not None: theme_subject_importance_record.weight = weight
-            session.commit()
-        session.close()
-
-    def delete_theme_subject_importance(self, theme_subject_importance_id):
-        session = self.Session()
-        theme_subject_importance_record = session.query(ThemeSubjectImportance).filter(
-            ThemeSubjectImportance.theme_subject_importance_id == theme_subject_importance_id).first()
-        if theme_subject_importance_record:
-            session.delete(theme_subject_importance_record)
-            session.commit()
-        session.close()
-
-
-class GradeRecordRepository:
-    def __init__(self, engine):
-        self.Session = sessionmaker(bind=engine)
-
-    def add_grade_record(self, subject_id, grade_id):
-        session = self.Session()
-        new_grade_record = GradeRecord(subject_id=subject_id, grade_id=grade_id)
-        session.add(new_grade_record)
-        session.commit()
-        session.close()
-
-    def get_all_grade_records(self):
-        session = self.Session()
-        grade_records = session.query(GradeRecord).all()
-        session.close()
-        return grade_records
-
-    def get_grade_record_by_id(self, grade_record_id):
-        session = self.Session()
-        grade_record = session.query(GradeRecord).filter(GradeRecord.grade_record_id == grade_record_id).first()
-        session.close()
-        return grade_record
-
-    def update_grade_record(self, grade_record_id, subject_id=None, grade_id=None):
-        session = self.Session()
-        grade_record_record = session.query(GradeRecord).filter(GradeRecord.grade_record_id == grade_record_id).first()
-        if grade_record_record:
-            if subject_id is not None: grade_record_record.subject_id = subject_id
-            if grade_id is not None: grade_record_record.grade_id = grade_id
-            session.commit()
-        session.close()
-
-    def delete_grade_record(self, grade_record_id):
-        session = self.Session()
-        grade_record_record = session.query(GradeRecord).filter(GradeRecord.grade_record_id == grade_record_id).first()
-        if grade_record_record:
-            session.delete(grade_record_record)
-            session.commit()
-        session.close()
-
-
-class StudentGradeRecordRepository:
-    def __init__(self, engine):
-        self.Session = sessionmaker(bind=engine)
-
-    def add_student_grade_record(self, student_id, grade_record_id):
-        session = self.Session()
-        new_student_grade_record = StudentGradeRecord(student_id=student_id, grade_record_id=grade_record_id)
-        session.add(new_student_grade_record)
-        session.commit()
-        session.close()
-
-    def get_all_student_grade_records(self):
-        session = self.Session()
-        student_grade_records = session.query(StudentGradeRecord).all()
-        session.close()
-        return student_grade_records
-
-    def get_student_grade_record_by_id(self, student_grade_record_id):
-        session = self.Session()
-        student_grade_record = session.query(StudentGradeRecord).filter(
-            StudentGradeRecord.student_grade_record_id == student_grade_record_id).first()
-        session.close()
-        return student_grade_record
-
-    def update_student_grade_record(self, student_grade_record_id, student_id=None, grade_record_id=None):
-        session = self.Session()
-        student_grade_record_record = session.query(StudentGradeRecord).filter(
-            StudentGradeRecord.student_grade_record_id == student_grade_record_id).first()
-        if student_grade_record_record:
-            if student_id is not None: student_grade_record_record.student_id = student_id
-            if grade_record_id is not None: student_grade_record_record.grade_record_id = grade_record_id
-            session.commit()
-        session.close()
-
-    def delete_student_grade_record(self, student_grade_record_id):
-        session = self.Session()
-        student_grade_record_record = session.query(StudentGradeRecord).filter(
-            StudentGradeRecord.student_grade_record_id == student_grade_record_id).first()
-        if student_grade_record_record:
-            session.delete(student_grade_record_record)
-            session.commit()
-        session.close()
-
-
-class StudentThemeInterestRepository:
-    def __init__(self, engine):
-        self.Session = sessionmaker(bind=engine)
-
-    def add_student_theme_interest(self, student_id, theme_id, interest_level):
-        session = self.Session()
-        new_student_theme_interest = StudentThemeInterest(student_id=student_id, theme_id=theme_id, interest_level=interest_level)
-        session.add(new_student_theme_interest)
-        session.commit()
-        session.close()
-
-    def get_all_student_theme_interests(self):
-        session = self.Session()
-        student_theme_interests = session.query(StudentThemeInterest).all()
-        session.close()
-        return student_theme_interests
-
-    def get_student_theme_interest_by_id(self, student_theme_interest_id):
-        session = self.Session()
-        student_theme_interest = session.query(StudentThemeInterest).filter(
-            StudentThemeInterest.student_theme_interest_id == student_theme_interest_id).first()
-        session.close()
-        return student_theme_interest
-
-    def update_student_theme_interest(self, student_theme_interest_id, student_id=None, theme_id=None, interest_level=None):
-        session = self.Session()
-        student_theme_interest_record = session.query(StudentThemeInterest).filter(
-            StudentThemeInterest.student_theme_interest_id == student_theme_interest_id).first()
-        if student_theme_interest_record:
-            if student_id is not None: student_theme_interest_record.student_id = student_id
-            if theme_id is not None: student_theme_interest_record.theme_id = theme_id
-            if interest_level is not None: student_theme_interest_record.interest_level = interest_level
-            session.commit()
-        session.close()
-
-    def delete_student_theme_interest(self, student_theme_interest_id):
-        session = self.Session()
-        student_theme_interest_record = session.query(StudentThemeInterest).filter(
-            StudentThemeInterest.student_theme_interest_id == student_theme_interest_id).first()
-        if student_theme_interest_record:
-            session.delete(student_theme_interest_record)
-            session.commit()
-        session.close()
+    student_repo.clear_all_students()
+    grade_repo.clear_all_grades()
+    subject_repo.clear_all_subjects()
+    adviser_repo.clear_all_advisers()
+    distribution_repo.clear_all_distributions()
+    theme_repo.clear_all_themes()
+    adviser_group_repo.clear_all_adviser_groups()
+    theme_subject_importance_repo.clear_all_theme_subject_importance()
+    grade_record_repo.clear_all_grade_records()
+    student_grade_record_repo.clear_all_student_grade_records()

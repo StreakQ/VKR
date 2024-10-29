@@ -1,18 +1,6 @@
 from sqlalchemy import create_engine
 from models import Base
-from repositories import (
-    StudentRepository,
-    AdviserRepository,
-    SubjectRepository,
-    ThemeRepository,
-    GradeRepository,
-    DistributionRepository,
-    GradeRecordRepository,
-    StudentGradeRecordRepository,
-    StudentThemeInterestRepository,
-    ThemeSubjectImportanceRepository,
-    AdviserGroupRepository,
-)
+from repositories import *
 
 class RepositoryFactory:
     @staticmethod
