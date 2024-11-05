@@ -319,10 +319,10 @@ class AdviserGroupRepository:
             if adviser_id in added_advisers:
                 continue
 
-            group_specialization = fake.word()  # Generate a random group specialization
-            if not self.get_adviser_group_by_adviser_id(adviser_id):  # Check if adviser_id already exists
+            group_specialization = fake.word()
+            if not self.get_adviser_group_by_adviser_id(adviser_id):
                 self.add_adviser_group(adviser_id, group_specialization)
-                added_advisers.add(adviser_id)  # Add adviser_id to the set of added advisers
+                added_advisers.add(adviser_id)
 
     def get_all_adviser_groups(self):
         session = self.Session()
