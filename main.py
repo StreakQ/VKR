@@ -40,7 +40,7 @@ def main():
     student_repository.add_initial_students(5)
     subject_repository.add_initial_subjects(5)
     adviser_repository.add_initial_advisers(5)
-    theme_repository.add_initial_themes(7)
+    theme_repository.add_initial_themes(10)
 
     students = student_repository.get_all_students()
     subjects = subject_repository.get_all_subjects()
@@ -48,7 +48,7 @@ def main():
     advisers = adviser_repository.get_all_advisers()
 
     adviser_group_repository.init_all_adviser_groups(advisers)
-    theme_adviser_group_repository.populate_theme_adviser_groups()
+    #theme_adviser_group_repository.populate_theme_adviser_groups()
 
     for student in students:
         for subject in subjects:

@@ -117,7 +117,7 @@ class AdviserRepository:
     def add_initial_advisers(self, count=5):
         for _ in range(count):
             self.add_adviser(fake.first_name_male(), fake.last_name_male(), fake.first_name_male(),
-                             fake.random_int(min=1, max=10))
+                             fake.random_int(min=1, max=2))
 
     def display_all_advisers(self):
         advisers = self.get_all_advisers()
@@ -860,7 +860,9 @@ class DistributionRepository:
 
     def assign_students_to_advisers(self, sorted_results):
         session = self.Session()
-        unassigned_students = []
+        unassigned_students = set()  # Используем множество для уникальных ID студентов
+        assigned_students = set()  # Множество для отслеживания назначенных студентов
+        assigned_themes = set()  # Множество для отслеживания назначенных тем
 
         try:
             # Получаем всех преподавателей
@@ -869,6 +871,14 @@ class DistributionRepository:
             print("Назначение студентов преподавателям:")
 
             for theme_id, student_id, total_weighted_grade, interest_level in sorted_results:
+                # Проверяем, был ли студент уже назначен
+                if student_id in assigned_students:
+                    continue  # Пропускаем, если студент уже назначен
+
+                # Проверяем, был ли студент уже назначен к теме
+                if theme_id in assigned_themes:
+                    continue  # Пропускаем, если тема уже назначена
+
                 # Находим доступных преподавателей
                 available_advisers = [
                     adviser for adviser in advisers.values()
@@ -886,8 +896,10 @@ class DistributionRepository:
                     print(
                         f"Студент ID: {student_id} назначен к преподавателю ID : {adviser.adviser_id} по теме ID: {theme_id}"
                     )
+                    assigned_students.add(student_id)  # Добавляем студента в назначенные
+                    assigned_themes.add(theme_id)  # Добавляем тему в назначенные
                 else:
-                    unassigned_students.append(student_id)
+                    unassigned_students.add(student_id)  # Добавляем студента в нераспределенные
 
         except Exception as e:
             session.rollback()
@@ -895,7 +907,8 @@ class DistributionRepository:
         finally:
             session.close()
 
-        return unassigned_students
+        # Возвращаем отсортированный список нераспределенных студентов
+        return sorted(unassigned_students)  # Возвращаем отсортированный список нераспределенных студентов
 
     def distribution_algorithm(self):
         student_subject_grades = self.student_grade_record_repo.get_all_student_subject_grades()
