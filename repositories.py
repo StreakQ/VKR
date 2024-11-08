@@ -718,22 +718,20 @@ class StudentThemeInterestRepository:
 
 
 class DistributionRepository:
-    def __init__(self, engine, student_subject_grade_repo, student_theme_interest_repo, theme_subject_importance_repo, theme_adviser_group_repo):
+    def __init__(self, engine, student_subject_grade_repo, student_theme_interest_repo, theme_subject_importance_repo):
         self.engine = engine
         self.student_grade_record_repo = student_subject_grade_repo
         self.student_theme_interest_repo = student_theme_interest_repo
         self.theme_subject_importance_repo = theme_subject_importance_repo
-        self.theme_adviser_group_repo = theme_adviser_group_repo
         self.Session = sessionmaker(bind=self.engine)
 
-    def add_distribution(self, theme_subject_importance_id, student_subject_grade_id, student_theme_interest_id, theme_adviser_group_id):
+    def add_distribution(self, theme_subject_importance_id, student_subject_grade_id, student_theme_interest_id):
         session = self.Session()
         try:
             new_distribution = Distribution(
                 theme_subject_importance_id=theme_subject_importance_id,
                 student_subject_grade_id=student_subject_grade_id,
                 student_theme_interest_id=student_theme_interest_id,
-                theme_adviser_group_id=theme_adviser_group_id
             )
             session.add(new_distribution)
             session.commit()
@@ -760,7 +758,7 @@ class DistributionRepository:
             session.close()
 
     def update_distribution(self, distribution_id, theme_subject_importance_id=None, student_subject_grade_id=None,
-                            student_theme_interest_id=None, theme_adviser_group_id=None):  # Добавлен параметр
+                            student_theme_interest_id=None):
         session = self.Session()
         try:
             distribution_record = session.query(Distribution).filter(Distribution.distribution_id == distribution_id).first()
@@ -771,8 +769,7 @@ class DistributionRepository:
                     distribution_record.student_subject_grade_id = student_subject_grade_id
                 if student_theme_interest_id is not None:
                     distribution_record.student_theme_interest_id = student_theme_interest_id
-                if theme_adviser_group_id is not None:  # Обновление группы советников
-                    distribution_record.theme_adviser_group_id = theme_adviser_group_id
+
                 session.commit()
         except Exception as e:
             session.rollback()
@@ -812,7 +809,6 @@ class DistributionRepository:
                 f"ID Важности Темы и Предмета: {distribution.theme_subject_importance_id}, "
                 f"ID Оценки Студента: {distribution.student_subject_grade_id}, "
                 f"ID Интереса Студента: {distribution.student_theme_interest_id}, "
-                f"ID Группы Советников: {distribution.theme_adviser_group_id}"  # Добавлено отображение группы советников
             )
 
     def link_theme_subject_importance_with_student_subject_grade(self):
@@ -867,38 +863,31 @@ class DistributionRepository:
         unassigned_students = []
 
         try:
-            # Получаем все группы советников
-            adviser_groups = {group.adviser_group_id: group for group in session.query(AdviserGroup).all()}
+            # Получаем всех преподавателей
             advisers = {adviser.adviser_id: adviser for adviser in session.query(Adviser).all()}
 
-            print("Назначение студентов советникам:")
+            print("Назначение студентов преподавателям:")
 
             for theme_id, student_id, total_weighted_grade, interest_level in sorted_results:
-                # Получаем группу советников для темы
-                theme_adviser_group = self.theme_adviser_group_repo.get_adviser_group_by_theme(theme_id)
-                if theme_adviser_group:
-                    adviser_group_id = theme_adviser_group.adviser_group_id
-                    # Находим доступных советников из этой группы
-                    available_advisers = [
-                        adviser for adviser in advisers.values()
-                        if adviser.adviser_group_id == adviser_group_id and
-                           adviser.number_of_places > 0
-                    ]
+                # Находим доступных преподавателей
+                available_advisers = [
+                    adviser for adviser in advisers.values()
+                    if adviser.number_of_places > 0
+                ]
 
-                    if available_advisers:
-                        adviser = available_advisers[0]
-                        self.add_distribution(
-                            theme_subject_importance_id=theme_id,
-                            student_subject_grade_id=student_id,
-                            student_theme_interest_id=interest_level,
-                            theme_adviser_group_id=adviser_group_id
-                        )
-                        adviser.number_of_places -= 1
-                        print(
-                            f"Студент ID: {student_id} назначен к советнику ID : {adviser.adviser_id} по теме ID: {theme_id}, Группа советников ID: {adviser_group_id}"
-                        )
-                    else:
-                        unassigned_students.append(student_id)
+                if available_advisers:
+                    adviser = available_advisers[0]  # Выбираем первого доступного преподавателя
+                    self.add_distribution(
+                        theme_subject_importance_id=theme_id,
+                        student_subject_grade_id=student_id,
+                        student_theme_interest_id=interest_level,
+                    )
+                    adviser.number_of_places -= 1
+                    print(
+                        f"Студент ID: {student_id} назначен к преподавателю ID : {adviser.adviser_id} по теме ID: {theme_id}"
+                    )
+                else:
+                    unassigned_students.append(student_id)
 
         except Exception as e:
             session.rollback()

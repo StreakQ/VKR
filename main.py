@@ -23,8 +23,7 @@ def main():
     student_subject_grade_repository = StudentSubjectGradeRepository(engine, student_repository,subject_repository)
     student_theme_interest_repository = StudentThemeInterestRepository(engine, student_repository,theme_repository)
     distribution_repository = DistributionRepository(engine, student_subject_grade_repository,
-                                                     student_subject_grade_repository, student_theme_interest_repository,
-                                                     theme_adviser_group_repository)
+                                                     student_subject_grade_repository, student_theme_interest_repository)
 
     # Очищаем репозитории
     student_repository.delete_all_students()
@@ -89,8 +88,8 @@ def main():
 
 
     distribution_repository.distribution_algorithm()
-    distribution_repository.display_all_distributions()
-    #print(theme_adviser_group_repository.get_adviser_group_by_theme(1))
+    #distribution_repository.display_all_distributions()
+
 
 if __name__ == "__main__":
     main()
