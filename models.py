@@ -98,7 +98,9 @@ class Distribution(Base):
     theme_subject_importance_id = Column(Integer, ForeignKey('theme_subject_importances.theme_subject_importance_id'), nullable=False)
     student_subject_grade_id = Column(Integer, ForeignKey('student_subjects_grades.student_subject_grade_id'), nullable=False)
     student_theme_interest_id = Column(Integer, ForeignKey('student_theme_interests.student_theme_interest_id'), nullable=False)
+    theme_adviser_group_id = Column(Integer, ForeignKey('theme_adviser_groups.theme_adviser_group_id'), nullable = False)
 
     theme_subject_importance = relationship("ThemeSubjectImportance")
     student_grade_record = relationship("StudentSubjectGrade")
     student_theme_interest = relationship("StudentThemeInterest")
+    theme_adviser_group = relationship("ThemeAdviserGroup")

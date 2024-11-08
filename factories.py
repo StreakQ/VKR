@@ -70,4 +70,4 @@ class RepositoryFactory:
 
         # Возвращаем DistributionRepository с зависимыми репозиториями
         return DistributionRepository(engine, student_grade_record_repo, student_theme_interest_repo,
-                                      theme_subject_importance_repo)
+                                      theme_subject_importance_repo,theme_adviser_group_repo)

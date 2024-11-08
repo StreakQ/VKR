@@ -9,8 +9,8 @@ from repositories import *
 def main():
     engine = create_engine("sqlite:///database.db")
 
-    Base.metadata.drop_all(engine)  # Удалите все таблицы
-    Base.metadata.create_all(engine)  # Создайте заново
+    Base.metadata.drop_all(engine)
+    Base.metadata.create_all(engine)
 
     # Создаем экземпляры репозиториев
     student_repository = StudentRepository(engine)
@@ -18,12 +18,13 @@ def main():
     adviser_repository = AdviserRepository(engine)
     adviser_group_repository = AdviserGroupRepository(engine, adviser_repository)
     theme_repository = ThemeRepository(engine)
-    theme_adviser_group_repository = ThemeAdviserGroupRepository(engine,)
+    theme_adviser_group_repository = ThemeAdviserGroupRepository(engine,theme_repository,adviser_group_repository)
     theme_subject_repository = ThemeSubjectImportanceRepository(engine,theme_repository, subject_repository)
     student_subject_grade_repository = StudentSubjectGradeRepository(engine, student_repository,subject_repository)
     student_theme_interest_repository = StudentThemeInterestRepository(engine, student_repository,theme_repository)
     distribution_repository = DistributionRepository(engine, student_subject_grade_repository,
-                                                     student_subject_grade_repository, student_theme_interest_repository)
+                                                     student_subject_grade_repository, student_theme_interest_repository,
+                                                     theme_adviser_group_repository)
 
     # Очищаем репозитории
     student_repository.delete_all_students()
@@ -48,6 +49,7 @@ def main():
     advisers = adviser_repository.get_all_advisers()
 
     adviser_group_repository.init_all_adviser_groups(advisers)
+    theme_adviser_group_repository.populate_theme_adviser_groups()
 
     for student in students:
         for subject in subjects:
@@ -66,7 +68,7 @@ def main():
 
     theme_subject_repository.add_random_importances_for_themes(themes, subjects)
     student_theme_interest_repository.initialize_student_interests()
-        # Отображаем данные
+
     print("Студенты:")
     student_repository.display_all_students()
     print("\nПредметы:")
@@ -86,9 +88,9 @@ def main():
 
 
 
-
     distribution_repository.distribution_algorithm()
     distribution_repository.display_all_distributions()
+    #print(theme_adviser_group_repository.get_adviser_group_by_theme(1))
 
 if __name__ == "__main__":
     main()
