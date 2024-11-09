@@ -1,6 +1,6 @@
 from sqlalchemy.orm import sessionmaker
 from models import (Student, Adviser, Subject, Theme, AdviserGroup,
-                    ThemeSubjectImportance, StudentSubjectGrade, StudentThemeInterest, Distribution, ThemeAdviserGroup)
+                    ThemeSubjectImportance, StudentSubjectGrade, StudentThemeInterest, Distribution)
 from faker import Faker
 import  random as rnd
 
@@ -390,94 +390,6 @@ class AdviserGroupRepository:
             print(e)
         finally:
             session.close()
-
-class ThemeAdviserGroupRepository:
-    def __init__(self, engine, theme_repo, adviser_group_repo):
-        self.Session = sessionmaker(bind=engine)
-        self.theme_repo = theme_repo
-        self.adviser_group_repo = adviser_group_repo
-
-    def add_theme_adviser_group(self, theme_id, adviser_group_id):
-        session = self.Session()
-        try:
-            new_relation = ThemeAdviserGroup(theme_id=theme_id, adviser_group_id=adviser_group_id)
-            session.add(new_relation)
-            session.commit()
-        except Exception as e:
-            session.rollback()
-            print(f"Ошибка при добавлении связи темы и группы советников: {e}")
-        finally:
-            session.close()
-
-    def get_all_theme_adviser_groups(self):
-        session = self.Session()
-        relations = session.query(ThemeAdviserGroup).all()
-        session.close()
-        return relations
-
-    def get_theme_adviser_group_by_id(self, theme_adviser_group_id):
-        session = self.Session()
-        relation = session.query(ThemeAdviserGroup).filter(ThemeAdviserGroup.theme_adviser_group_id == theme_adviser_group_id).first()
-        session.close()
-        return relation
-
-    def get_adviser_group_by_theme(self, theme_id):
-        session = self.Session()
-        try:
-            relation = session.query(ThemeAdviserGroup).filter(ThemeAdviserGroup.theme_id == theme_id).first()
-            return relation
-        finally:
-            session.close()
-
-    def update_theme_adviser_group(self, theme_adviser_group_id, theme_id=None, adviser_group_id=None):
-        session = self.Session()
-        relation = session.query(ThemeAdviserGroup).filter(ThemeAdviserGroup.theme_adviser_group_id == theme_adviser_group_id).first()
-        if relation:
-            if theme_id is not None:
-                relation.theme_id = theme_id
-            if adviser_group_id is not None:
-                relation.adviser_group_id = adviser_group_id
-            session.commit()
-        session.close()
-
-    def delete_theme_adviser_group(self, theme_adviser_group_id):
-        session = self.Session()
-        relation = session.query(ThemeAdviserGroup).filter(ThemeAdviserGroup.theme_adviser_group_id == theme_adviser_group_id).first()
-        if relation:
-            session.delete(relation)
-            session.commit()
-        session.close()
-
-    def populate_theme_adviser_groups(self):
-        themes = self.theme_repo.get_all_themes()
-        adviser_groups = self.adviser_group_repo.get_all_adviser_groups()
-
-        if not themes or not adviser_groups:
-            print("Нет доступных тем или групп советников для заполнения.")
-            return
-
-        for theme in themes:
-            # Случайно выбираем группу советников
-            adviser_group = rnd.choice(adviser_groups)
-            self.add_theme_adviser_group(theme.theme_id, adviser_group.adviser_group_id)
-            print(f"Связь добавлена: Тема ID {theme.theme_id} - Группа советников ID {adviser_group.adviser_group_id}")
-
-
-
-    def display_all_theme_adviser_groups(self):
-        relations = self.get_all_theme_adviser_groups()
-        for relation in relations:
-            print(f"ID: {relation.theme_adviser_group_id}, ID Темы: {relation.theme_id}, ID Группы руководителей: {relation.adviser_group_id}")
-
-    def add_init_theme_adviser_group(self):
-        session = self.Session()
-        themes = session.query(Theme).all()
-        adviser_groups = session.query(AdviserGroup).all()
-
-        for theme in themes:
-            adviser_group = rnd.choice(adviser_groups)
-            self.add_theme_adviser_group(theme.theme_id, adviser_group.adviser_group_id)
-        session.close()
 
 
 class ThemeSubjectImportanceRepository:
@@ -931,7 +843,7 @@ class DistributionRepository:
                 f"Тема ID: {theme_id}, Студент ID: {student_id}, Сумма взвешенных оценок: {round(total_weighted_grade, 2)}, Уровень интереса: {interest_level}"
             )
 
-        # Теперь вызываем метод для назначения студентов советникам
+        # Теперь вызываем метод для назначения студентов научным руководителям
         unassigned_students = self.assign_students_to_advisers(sorted_results)
 
         # Дополнительная информация о нераспределенных студентах
@@ -940,4 +852,4 @@ class DistributionRepository:
             for student_id in unassigned_students:
                 print(f"Студент ID: {student_id}")
         else:
-            print("Все студенты успешно распределены к советникам.")
+            print("Все студенты успешно распределены к научным руководителям.")

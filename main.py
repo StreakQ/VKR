@@ -18,7 +18,6 @@ def main():
     adviser_repository = AdviserRepository(engine)
     adviser_group_repository = AdviserGroupRepository(engine, adviser_repository)
     theme_repository = ThemeRepository(engine)
-    theme_adviser_group_repository = ThemeAdviserGroupRepository(engine,theme_repository,adviser_group_repository)
     theme_subject_repository = ThemeSubjectImportanceRepository(engine,theme_repository, subject_repository)
     student_subject_grade_repository = StudentSubjectGradeRepository(engine, student_repository,subject_repository)
     student_theme_interest_repository = StudentThemeInterestRepository(engine, student_repository,theme_repository)
