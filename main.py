@@ -1,7 +1,4 @@
-from importlib.metadata import distribution
-
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
 from models import Base
 from repositories import *
 
