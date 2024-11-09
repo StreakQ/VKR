@@ -843,18 +843,15 @@ class DistributionRepository:
     def distribution_algorithm(self):
         # Получаем степени подходимости и уровень интереса
         suitability_results = self.link_weighted_grades_with_interest()
+        sorted_results = sorted(suitability_results, key=lambda x: (x[3],-x[2],x[0]))
 
-        # Сортируем сначала по степени подходимости, затем по уровню интереса
-        sorted_results = sorted(suitability_results, key=lambda x: (-x[2], x[3]))
-
-        print("\nРезультаты сортировки студентов по степени подходимости и уровню интереса:")
+        print("\nРезультаты сортировки студентов по уровню интереса и степени подходимости :")
         for theme_id, student_id, suitability_score, interest_level in sorted_results:
             print(
                 f"Тема ID: {theme_id}, Студент ID: {student_id}, Степень подходимости: {round(suitability_score, 2)}%, "
                 f"Уровень интереса: {interest_level}"
             )
 
-        # Теперь вызываем метод для назначения студентов научным руководителям
         unassigned_students = self.assign_students_to_advisers(sorted_results)
 
         # Дополнительная информация о нераспределенных студентах
