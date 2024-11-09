@@ -40,7 +40,6 @@ class Theme(Base):
 
     subject_importances = relationship("ThemeSubjectImportance", back_populates="theme")
     student_theme_interests = relationship("StudentThemeInterest", back_populates="theme")
-    adviser_groups = relationship("ThemeAdviserGroup", back_populates="theme")
 
 class AdviserGroup(Base):
     __tablename__ = 'adviser_groups'
@@ -49,17 +48,7 @@ class AdviserGroup(Base):
     group_specialization = Column(String, nullable=False)
 
     adviser = relationship("Adviser", back_populates="adviser_group")
-    theme_adviser_groups = relationship("ThemeAdviserGroup", back_populates="adviser_group")
 
-class ThemeAdviserGroup(Base):
-    __tablename__ = 'theme_adviser_groups'
-
-    theme_adviser_group_id = Column(Integer, primary_key=True)
-    theme_id = Column(Integer, ForeignKey('themes.theme_id'))
-    adviser_group_id = Column(Integer, ForeignKey('adviser_groups.adviser_group_id'))
-
-    theme = relationship("Theme", back_populates="adviser_groups")
-    adviser_group = relationship("AdviserGroup", back_populates="theme_adviser_groups")
 
 class ThemeSubjectImportance(Base):
     __tablename__ = 'theme_subject_importances'
@@ -98,9 +87,7 @@ class Distribution(Base):
     theme_subject_importance_id = Column(Integer, ForeignKey('theme_subject_importances.theme_subject_importance_id'), nullable=False)
     student_subject_grade_id = Column(Integer, ForeignKey('student_subjects_grades.student_subject_grade_id'), nullable=False)
     student_theme_interest_id = Column(Integer, ForeignKey('student_theme_interests.student_theme_interest_id'), nullable=False)
-    #theme_adviser_group_id = Column(Integer, ForeignKey('theme_adviser_groups.theme_adviser_group_id'), nullable = False)
 
     theme_subject_importance = relationship("ThemeSubjectImportance")
     student_grade_record = relationship("StudentSubjectGrade")
     student_theme_interest = relationship("StudentThemeInterest")
-    #theme_adviser_group = relationship("ThemeAdviserGroup")
