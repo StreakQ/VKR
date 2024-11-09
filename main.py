@@ -47,7 +47,6 @@ def main():
     advisers = adviser_repository.get_all_advisers()
 
     adviser_group_repository.init_all_adviser_groups(advisers)
-    #theme_adviser_group_repository.populate_theme_adviser_groups()
 
     for student in students:
         for subject in subjects:
@@ -87,7 +86,6 @@ def main():
 
 
     distribution_repository.distribution_algorithm()
-    #distribution_repository.display_all_distributions()
 
 
 if __name__ == "__main__":

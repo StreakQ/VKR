@@ -453,9 +453,18 @@ class ThemeSubjectImportanceRepository:
                 subject_count = rnd.randint(min_count, max_count)
                 selected_subjects = rnd.sample(subjects, subject_count)
 
-                for subject in selected_subjects:
-                    weight = rnd.uniform(0.1, 1.0)
-                    self.add_theme_subject_importance(theme.theme_id, subject.subject_id, weight)
+                # Генерируем случайные веса
+                weights = [rnd.uniform(0.1, 1.0) for _ in selected_subjects]
+                total_weight = sum(weights)
+
+                # Нормализуем веса
+                normalized_weights = [weight / total_weight for weight in weights]
+
+                # Проверка на сумму весов
+                assert abs(sum(normalized_weights) - 1.0) < 1e-6, "Сумма нормализованных весов не равна 1"
+
+                for subject, normalized_weight in zip(selected_subjects, normalized_weights):
+                    self.add_theme_subject_importance(theme.theme_id, subject.subject_id, normalized_weight)
         except Exception as e:
             session.rollback()
             print(e)
@@ -713,58 +722,67 @@ class DistributionRepository:
         finally:
             session.close()
 
-    def display_all_distributions(self):
-        distributions = self.get_all_distributions()
-        for distribution in distributions:
-            print(
-                f"ID: {distribution.distribution_id}, "
-                f"ID Важности Темы и Предмета: {distribution.theme_subject_importance_id}, "
-                f"ID Оценки Студента: {distribution.student_subject_grade_id}, "
-                f"ID Интереса Студента: {distribution.student_theme_interest_id}, "
-            )
-
     def link_theme_subject_importance_with_student_subject_grade(self):
         session = self.Session()
-        importance_sum = {}
+        suitability_scores = {}
         try:
             theme_subject_importance_records = session.query(ThemeSubjectImportance).all()
             student_subject_grade_records = session.query(StudentSubjectGrade).all()
 
-            for theme_importance in theme_subject_importance_records:
-                theme_id = theme_importance.theme_id
-                subject_id = theme_importance.subject_id
-                weight = theme_importance.weight
+            # Словарь для хранения весов предметов по темам
+            subject_weights = {}
+            for importance in theme_subject_importance_records:
+                theme_id = importance.theme_id
+                subject_id = importance.subject_id
+                weight = importance.weight
 
-                for grade_record in student_subject_grade_records:
-                    if grade_record.subject_id == subject_id:
-                        student_id = grade_record.student_id
-                        grade = grade_record.grade
+                if theme_id not in subject_weights:
+                    subject_weights[theme_id] = {}
+                subject_weights[theme_id][subject_id] = weight
 
-                        weighted_grade = grade * weight
+            for theme_id, subjects in subject_weights.items():
+                for subject_id, weight in subjects.items():
+                    for grade_record in student_subject_grade_records:
+                        if grade_record.subject_id == subject_id:
+                            student_id = grade_record.student_id
+                            grade = grade_record.grade
 
-                        if (theme_id, student_id) not in importance_sum:
-                            importance_sum[(theme_id, student_id)] = 0
-                        importance_sum[(theme_id, student_id)] += weighted_grade
+                            # Вычисляем взвешенную оценку
+                            weighted_grade = grade * weight
+
+                            # Если еще нет записи для этой темы и студента, создаем ее
+                            if (theme_id, student_id) not in suitability_scores:
+                                suitability_scores[(theme_id, student_id)] = 0
+
+                            # Добавляем взвешенную оценку к степени подходимости
+                            suitability_scores[(theme_id, student_id)] += weighted_grade
+
+            # Преобразуем в проценты
+            for key in suitability_scores:
+                # Максимальная возможная оценка для данной темы
+                max_possible_score = sum(weight * 5 for weight in subject_weights[key[0]].values())
+                suitability_scores[key] = (suitability_scores[key] / max_possible_score) * 100  # В процентах
+
         finally:
             session.close()
-        return importance_sum
+        return suitability_scores
 
     def link_weighted_grades_with_interest(self):
         session = self.Session()
         result = []
         try:
-            # Получаем суммы взвешенных оценок
-            importance_sums = self.link_theme_subject_importance_with_student_subject_grade()
+            # Получаем степени подходимости
+            suitability_scores = self.link_theme_subject_importance_with_student_subject_grade()
 
             # Получаем интерес студентов к темам
             student_theme_interests = session.query(StudentThemeInterest).all()
 
-            for (theme_id, student_id), total_weighted_grade in importance_sums.items():
+            for (theme_id, student_id), suitability_score in suitability_scores.items():
                 # Ищем уровень интереса студента к теме
                 interest_level = next((interest.interest_level for interest in student_theme_interests
                                        if interest.student_id == student_id and interest.theme_id == theme_id), None)
                 if interest_level is not None:
-                    result.append((theme_id, student_id, total_weighted_grade, interest_level))
+                    result.append((theme_id, student_id, suitability_score, interest_level))
 
         finally:
             session.close()
@@ -823,24 +841,17 @@ class DistributionRepository:
         return sorted(unassigned_students)  # Возвращаем отсортированный список нераспределенных студентов
 
     def distribution_algorithm(self):
-        student_subject_grades = self.student_grade_record_repo.get_all_student_subject_grades()
+        # Получаем степени подходимости и уровень интереса
+        suitability_results = self.link_weighted_grades_with_interest()
 
-        # Вывод всех оценок студентов
-        for grade_record in student_subject_grades:
+        # Сортируем сначала по степени подходимости, затем по уровню интереса
+        sorted_results = sorted(suitability_results, key=lambda x: (-x[2], x[3]))
+
+        print("\nРезультаты сортировки студентов по степени подходимости и уровню интереса:")
+        for theme_id, student_id, suitability_score, interest_level in sorted_results:
             print(
-                f"Студент ID: {grade_record.student_id}, Предмет ID: {grade_record.subject_id}, Оценка: {grade_record.grade}"
-            )
-
-        # Получаем суммы взвешенных оценок и уровень интереса
-        weighted_grades_with_interest = self.link_weighted_grades_with_interest()
-
-        # Сортируем по убыванию суммы взвешенных оценок, затем по убыванию уровня интереса
-        sorted_results = sorted(weighted_grades_with_interest, key=lambda x: (-x[2], x[3]))
-
-        print("\nРезультаты сортировки студентов по сумме взвешенных оценок и уровню интереса:")
-        for theme_id, student_id, total_weighted_grade, interest_level in sorted_results:
-            print(
-                f"Тема ID: {theme_id}, Студент ID: {student_id}, Сумма взвешенных оценок: {round(total_weighted_grade, 2)}, Уровень интереса: {interest_level}"
+                f"Тема ID: {theme_id}, Студент ID: {student_id}, Степень подходимости: {round(suitability_score, 2)}%, "
+                f"Уровень интереса: {interest_level}"
             )
 
         # Теперь вызываем метод для назначения студентов научным руководителям
