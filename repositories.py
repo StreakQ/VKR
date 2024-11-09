@@ -761,7 +761,7 @@ class DistributionRepository:
             for key in suitability_scores:
                 # Максимальная возможная оценка для данной темы
                 max_possible_score = sum(weight * 5 for weight in subject_weights[key[0]].values())
-                suitability_scores[key] = (suitability_scores[key] / max_possible_score) * 100  # В процентах
+                suitability_scores[key] = (suitability_scores[key] / max_possible_score) * 100
 
         finally:
             session.close()

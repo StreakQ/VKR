@@ -56,7 +56,6 @@ class RepositoryFactory:
         engine = create_engine(db_url)
         Base.metadata.create_all(engine)
 
-        # Создание зависимых репозиториев
         student_grade_record_repo = RepositoryFactory.create_student_subject_grade_repository(db_url)
         student_theme_interest_repo = RepositoryFactory.create_student_theme_interest_repository(db_url)
         theme_subject_importance_repo = RepositoryFactory.create_theme_subject_importance_repository(db_url)
