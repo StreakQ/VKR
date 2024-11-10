@@ -1,5 +1,5 @@
 from sqlalchemy.orm import sessionmaker
-from models import (Student, Adviser, Subject, Theme, AdviserGroup,
+from models import (Student, Adviser, Subject, Theme,
                     ThemeSubjectImportance, StudentSubjectGrade, StudentThemeInterest, Distribution)
 from faker import Faker
 import random as rnd
@@ -245,50 +245,52 @@ class ThemeRepository(BaseRepository):
     def delete_all_themes(self):
         self.delete_all(Theme)
 
-class AdviserGroupRepository(BaseRepository):
-    def __init__(self, engine, adviser_repository):
-        super().__init__(engine)
-        self.adviser_repository = adviser_repository
 
-    def add_adviser_in_group(self, adviser_id, group_specialization):
-        session = self.Session()
-        new_adviser_group = AdviserGroup(adviser_id=adviser_id, group_specialization=group_specialization)
-        session.add(new_adviser_group)
-        session.commit()
-        session.close()
+# class AdviserGroupRepository(BaseRepository):
+#     def __init__(self, engine, adviser_repository):
+#         super().__init__(engine)
+#         self.adviser_repository = adviser_repository
+#
+#     def add_adviser_in_group(self, adviser_id, group_specialization):
+#         session = self.Session()
+#         new_adviser_group = AdviserGroup(adviser_id=adviser_id, group_specialization=group_specialization)
+#         session.add(new_adviser_group)
+#         session.commit()
+#         session.close()
+#
+#     def update_adviser_group(self, adviser_group_id, adviser_id=None, specialization=None):
+#         session = self.Session()
+#         adviser_group_record = self.get_by_id(AdviserGroup, adviser_group_id)
+#         if adviser_group_record:
+#             if adviser_id is not None: adviser_group_record.adviser_id = adviser_id
+#             if specialization: adviser_group_record.group_specialization = specialization
+#             session.commit()
+#         session.close()
+#
+#     def delete_adviser_group(self, adviser_group_id):
+#         session = self.Session()
+#         adviser_group_record = self.get_by_id(AdviserGroup, adviser_group_id)
+#         if adviser_group_record:
+#             session.delete(adviser_group_record)
+#             session.commit()
+#         session.close()
+#
+#     def display_all_adviser_groups(self):
+#         adviser_groups = self.get_all(AdviserGroup)
+#         for group in adviser_groups:
+#             print(
+#                 f"ID Группы руководителей: {group.adviser_group_id}, ID Руководителя: {group.adviser_id}, "
+#                 f"Специализация: {group .group_specialization}")
+#
+#     def init_all_adviser_groups(self, advisers):
+#         group_specializations = ["Специализация 1", "Специализация 2"]
+#         for adviser in advisers:
+#             specialization = rnd.choice(group_specializations)
+#             self.add_adviser_in_group(adviser.adviser_id, specialization)
+#
+#     def delete_all_adviser_groups(self):
+#         self.delete_all(AdviserGroup)
 
-    def update_adviser_group(self, adviser_group_id, adviser_id=None, specialization=None):
-        session = self.Session()
-        adviser_group_record = self.get_by_id(AdviserGroup, adviser_group_id)
-        if adviser_group_record:
-            if adviser_id is not None: adviser_group_record.adviser_id = adviser_id
-            if specialization: adviser_group_record.group_specialization = specialization
-            session.commit()
-        session.close()
-
-    def delete_adviser_group(self, adviser_group_id):
-        session = self.Session()
-        adviser_group_record = self.get_by_id(AdviserGroup, adviser_group_id)
-        if adviser_group_record:
-            session.delete(adviser_group_record)
-            session.commit()
-        session.close()
-
-    def display_all_adviser_groups(self):
-        adviser_groups = self.get_all(AdviserGroup)
-        for group in adviser_groups:
-            print(
-                f"ID Группы руководителей: {group.adviser_group_id}, ID Руководителя: {group.adviser_id}, "
-                f"Специализация: {group .group_specialization}")
-
-    def init_all_adviser_groups(self, advisers):
-        group_specializations = ["Специализация 1", "Специализация 2"]
-        for adviser in advisers:
-            specialization = rnd.choice(group_specializations)
-            self.add_adviser_in_group(adviser.adviser_id, specialization)
-
-    def delete_all_adviser_groups(self):
-        self.delete_all(AdviserGroup)
 
 class ThemeSubjectImportanceRepository(BaseRepository):
     def __init__(self, engine, theme_repository, subject_repository):

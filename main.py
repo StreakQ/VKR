@@ -14,7 +14,7 @@ def main():
     student_repository = StudentRepository(engine)
     subject_repository = SubjectRepository(engine)
     adviser_repository = AdviserRepository(engine)
-    adviser_group_repository = AdviserGroupRepository(engine, adviser_repository)
+    #adviser_group_repository = AdviserGroupRepository(engine, adviser_repository)
     theme_repository = ThemeRepository(engine)
     theme_subject_repository = ThemeSubjectImportanceRepository(engine, theme_repository, subject_repository)
     student_subject_grade_repository = StudentSubjectGradeRepository(engine, student_repository, subject_repository)
@@ -27,7 +27,7 @@ def main():
     subject_repository.delete_all_subjects()
     adviser_repository.delete_all_advisers()
     theme_repository.delete_all_themes()
-    adviser_group_repository.delete_all_adviser_groups()
+    #adviser_group_repository.delete_all_adviser_groups()
     theme_subject_repository.delete_all_theme_subject_importances()
     student_subject_grade_repository.delete_all_student_subject_grades()
     student_theme_interest_repository.delete_all_student_theme_interests()
@@ -44,7 +44,7 @@ def main():
     subjects = subject_repository.get_all(Subject)
     themes = theme_repository.get_all(Theme)
     advisers = adviser_repository.get_all(Adviser)
-    adviser_group_repository.init_all_adviser_groups(advisers)
+    #adviser_group_repository.init_all_adviser_groups(advisers)
 
     for student in students:
         for subject in subjects:
@@ -70,8 +70,8 @@ def main():
     subject_repository.display_all_subjects()
     print("\nНаучные руководители:")
     adviser_repository.display_all_advisers()
-    print("\nГруппы научных руководителей:")
-    adviser_group_repository.display_all_adviser_groups()
+    # print("\nГруппы научных руководителей:")
+    # adviser_group_repository.display_all_adviser_groups()
     print("\nТемы:")
     theme_repository.display_all_themes()
     print("\nОценки студентов:")

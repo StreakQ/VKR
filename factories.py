@@ -45,11 +45,11 @@ class RepositoryFactory:
         Base.metadata.create_all(engine)
         return ThemeSubjectImportanceRepository(engine)
 
-    @staticmethod
-    def create_adviser_group_repository(db_url):
-        engine = create_engine(db_url)
-        Base.metadata.create_all(engine)
-        return AdviserGroupRepository(engine)
+    # @staticmethod
+    # def create_adviser_group_repository(db_url):
+    #     engine = create_engine(db_url)
+    #     Base.metadata.create_all(engine)
+    #     return AdviserGroupRepository(engine)
 
     @staticmethod
     def create_distribution_repository(db_url):
