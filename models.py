@@ -23,7 +23,7 @@ class Adviser(Base):
     patronymic = Column(String, nullable=False)
     number_of_places = Column(Integer, nullable=False)
 
-    adviser_group = relationship("AdviserGroup", back_populates="adviser")
+    #adviser_group = relationship("AdviserGroup", back_populates="adviser")
 
 class Subject(Base):
     __tablename__ = 'subjects'
@@ -41,13 +41,13 @@ class Theme(Base):
     subject_importances = relationship("ThemeSubjectImportance", back_populates="theme")
     student_theme_interests = relationship("StudentThemeInterest", back_populates="theme")
 
-class AdviserGroup(Base):
-    __tablename__ = 'adviser_groups'
-    adviser_group_id = Column(Integer, primary_key=True)
-    adviser_id = Column(Integer, ForeignKey('advisers.adviser_id'), unique=True, nullable=False)
-    group_specialization = Column(String, nullable=False)
-
-    adviser = relationship("Adviser", back_populates="adviser_group")
+# class AdviserGroup(Base):
+#     __tablename__ = 'adviser_groups'
+#     adviser_group_id = Column(Integer, primary_key=True)
+#     adviser_id = Column(Integer, ForeignKey('advisers.adviser_id'), unique=True, nullable=False)
+#     group_specialization = Column(String, nullable=False)
+#
+#     adviser = relationship("Adviser", back_populates="adviser_group")
 
 class ThemeSubjectImportance(Base):
     __tablename__ = 'theme_subject_importances'
