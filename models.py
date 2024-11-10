@@ -49,7 +49,6 @@ class AdviserGroup(Base):
 
     adviser = relationship("Adviser", back_populates="adviser_group")
 
-
 class ThemeSubjectImportance(Base):
     __tablename__ = 'theme_subject_importances'
     theme_subject_importance_id = Column(Integer, primary_key=True)
