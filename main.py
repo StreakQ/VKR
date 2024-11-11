@@ -23,14 +23,14 @@ def main():
                                                      student_theme_interest_repository, theme_subject_repository)
 
     # Очищаем репозитории
-    student_repository.delete_all_students()
-    subject_repository.delete_all_subjects()
-    adviser_repository.delete_all_advisers()
-    theme_repository.delete_all_themes()
-    #adviser_group_repository.delete_all_adviser_groups()
-    theme_subject_repository.delete_all_theme_subject_importances()
-    student_subject_grade_repository.delete_all_student_subject_grades()
-    student_theme_interest_repository.delete_all_student_theme_interests()
+    student_repository.delete_all(Student)
+    subject_repository.delete_all(Subject)
+    adviser_repository.delete_all(Adviser)
+    theme_repository.delete_all(Theme)
+    #adviser_group_repository.delete_all(AdviserGroup)
+    theme_subject_repository.delete_all(ThemeSubjectImportance)
+    student_subject_grade_repository.delete_all(StudentSubjectGrade)
+    student_theme_interest_repository.delete_all(StudentThemeInterest)
     distribution_repository.delete_all_distributions()
 
     # Добавляем начальные данные

@@ -76,9 +76,7 @@ class StudentRepository(BaseRepository):
             print(
                 f"ID Студента: {student.student_id}, Имя: {student.firstname} {student.lastname}, "
                 f"Группа: {student.group_student}")
-
-    def delete_all_students(self):
-        self.delete_all(Student)
+6
 
 class AdviserRepository(BaseRepository):
     def __init__(self, engine):
@@ -122,8 +120,6 @@ class AdviserRepository(BaseRepository):
                 f"ID Руководителя: {adviser.adviser_id}, Имя: {adviser.firstname} {adviser.lastname}, Мест: "
                 f"{adviser.number_of_places}")
 
-    def delete_all_advisers(self):
-        self.delete_all(Adviser)
 
 class SubjectRepository(BaseRepository):
     def __init__(self, engine):
@@ -181,8 +177,6 @@ class SubjectRepository(BaseRepository):
         for subject in subjects:
             print(f"ID Предмета: {subject.subject_id}, Название: {subject.subject_name}")
 
-    def delete_all_subjects(self):
-        self.delete_all(Subject)
 
 class ThemeRepository(BaseRepository):
     def __init__(self, engine):
@@ -242,9 +236,6 @@ class ThemeRepository(BaseRepository):
         for theme in themes:
             print(f"ID Темы: {theme.theme_id}, Название: {theme.theme_name}")
 
-    def delete_all_themes(self):
-        self.delete_all(Theme)
-
 
 # class AdviserGroupRepository(BaseRepository):
 #     def __init__(self, engine, adviser_repository):
@@ -288,9 +279,6 @@ class ThemeRepository(BaseRepository):
 #             specialization = rnd.choice(group_specializations)
 #             self.add_adviser_in_group(adviser.adviser_id, specialization)
 #
-#     def delete_all_adviser_groups(self):
-#         self.delete_all(AdviserGroup)
-
 
 class ThemeSubjectImportanceRepository(BaseRepository):
     def __init__(self, engine, theme_repository, subject_repository):
@@ -355,9 +343,6 @@ class ThemeSubjectImportanceRepository(BaseRepository):
         finally:
             session.close()
 
-    def delete_all_theme_subject_importances(self):
-        self.delete_all(ThemeSubjectImportance)
-
 class StudentSubjectGradeRepository(BaseRepository):
     def __init__(self, engine, student_repository, subject_repository):
         super().__init__(engine)
@@ -397,8 +382,6 @@ class StudentSubjectGradeRepository(BaseRepository):
                 f"ID: {grade.student_subject_grade_id}, ID Студента: {grade.student_id}, ID Предмета: {grade.subject_id}, "
                 f"Оценка: {grade.grade}")
 
-    def delete_all_student_subject_grades(self):
-        self.delete_all(StudentSubjectGrade)
 
 class StudentThemeInterestRepository(BaseRepository):
     def __init__(self, engine, student_repository, theme_repository):
@@ -444,8 +427,6 @@ class StudentThemeInterestRepository(BaseRepository):
                 f"ID: {interest.student_theme_interest_id}, ID Студента: {interest.student_id}, "
                 f"ID Темы: {interest.theme_id}, Уровень интереса: {interest.interest_level}")
 
-    def delete_all_student_theme_interests(self):
-        self.delete_all(StudentThemeInterest)
 
 class DistributionRepository:
     def __init__(self, engine, student_subject_grade_repo, student_theme_interest_repo, theme_subject_importance_repo):
