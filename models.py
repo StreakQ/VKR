@@ -23,7 +23,8 @@ class Adviser(Base):
     patronymic = Column(String, nullable=False)
     number_of_places = Column(Integer, nullable=False)
 
-    #adviser_group = relationship("AdviserGroup", back_populates="adviser")
+    adviser_themes = relationship("AdviserTheme",back_populates="adviser")
+
 
 class Subject(Base):
     __tablename__ = 'subjects'
@@ -40,14 +41,18 @@ class Theme(Base):
 
     subject_importances = relationship("ThemeSubjectImportance", back_populates="theme")
     student_theme_interests = relationship("StudentThemeInterest", back_populates="theme")
+    adviser_themes = relationship("AdviserTheme",back_populates="theme")
 
-# class AdviserGroup(Base):
-#     __tablename__ = 'adviser_groups'
-#     adviser_group_id = Column(Integer, primary_key=True)
-#     adviser_id = Column(Integer, ForeignKey('advisers.adviser_id'), unique=True, nullable=False)
-#     group_specialization = Column(String, nullable=False)
-#
-#     adviser = relationship("Adviser", back_populates="adviser_group")
+class AdviserTheme(Base):
+    __tablename__ = 'adviser_themes'
+    adviser_theme_id = Column(Integer, primary_key = True)
+    adviser_id = Column(Integer,ForeignKey('advisers.adviser_id'), nullable=False)
+    theme_id = Column(Integer, ForeignKey('themes.theme_id'), nullable=False)
+    priority = Column(Integer, nullable=False)
+
+    theme = relationship("Theme", back_populates="adviser_themes")
+    adviser = relationship("Adviser", back_populates = "adviser_themes")
+
 
 class ThemeSubjectImportance(Base):
     __tablename__ = 'theme_subject_importances'
@@ -86,7 +91,9 @@ class Distribution(Base):
     theme_subject_importance_id = Column(Integer, ForeignKey('theme_subject_importances.theme_subject_importance_id'), nullable=False)
     student_subject_grade_id = Column(Integer, ForeignKey('student_subjects_grades.student_subject_grade_id'), nullable=False)
     student_theme_interest_id = Column(Integer, ForeignKey('student_theme_interests.student_theme_interest_id'), nullable=False)
+    adviser_theme_id = Column(Integer, ForeignKey('adviser_themes.adviser_theme_id'), nullable=False)
 
     theme_subject_importance = relationship("ThemeSubjectImportance")
     student_grade_record = relationship("StudentSubjectGrade")
     student_theme_interest = relationship("StudentThemeInterest")
+    adviser_theme = relationship("AdviserTheme")

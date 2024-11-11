@@ -14,20 +14,21 @@ def main():
     student_repository = StudentRepository(engine)
     subject_repository = SubjectRepository(engine)
     adviser_repository = AdviserRepository(engine)
-    #adviser_group_repository = AdviserGroupRepository(engine, adviser_repository)
+
     theme_repository = ThemeRepository(engine)
     theme_subject_repository = ThemeSubjectImportanceRepository(engine, theme_repository, subject_repository)
     student_subject_grade_repository = StudentSubjectGradeRepository(engine, student_repository, subject_repository)
     student_theme_interest_repository = StudentThemeInterestRepository(engine, student_repository, theme_repository)
+    adviser_theme_repository = AdviserThemeRepository(engine,adviser_repository,theme_repository)
     distribution_repository = DistributionRepository(engine, student_subject_grade_repository,
-                                                     student_theme_interest_repository, theme_subject_repository)
+                                                     student_theme_interest_repository, theme_subject_repository,
+                                                     adviser_theme_repository)
 
     # Очищаем репозитории
     student_repository.delete_all(Student)
     subject_repository.delete_all(Subject)
     adviser_repository.delete_all(Adviser)
     theme_repository.delete_all(Theme)
-    #adviser_group_repository.delete_all(AdviserGroup)
     theme_subject_repository.delete_all(ThemeSubjectImportance)
     student_subject_grade_repository.delete_all(StudentSubjectGrade)
     student_theme_interest_repository.delete_all(StudentThemeInterest)
@@ -43,8 +44,7 @@ def main():
     students = student_repository.get_all(Student)
     subjects = subject_repository.get_all(Subject)
     themes = theme_repository.get_all(Theme)
-    advisers = adviser_repository.get_all(Adviser)
-    #adviser_group_repository.init_all_adviser_groups(advisers)
+
 
     for student in students:
         for subject in subjects:
@@ -61,6 +61,7 @@ def main():
             weight = rnd.uniform(0.1, 1)
             theme_subject_repository.add_theme_subject_importance(theme.theme_id, subject.subject_id, weight)
 
+    adviser_theme_repository.init_random_priorities()
     theme_subject_repository.add_random_importances_for_themes(themes, subjects)
     student_theme_interest_repository.initialize_student_interests()
 
@@ -70,8 +71,6 @@ def main():
     subject_repository.display_all_subjects()
     print("\nНаучные руководители:")
     adviser_repository.display_all_advisers()
-    # print("\nГруппы научных руководителей:")
-    # adviser_group_repository.display_all_adviser_groups()
     print("\nТемы:")
     theme_repository.display_all_themes()
     print("\nОценки студентов:")
@@ -80,6 +79,8 @@ def main():
     student_theme_interest_repository.display_all_student_theme_interests()
     print("\nВажность тем для предметов:")
     theme_subject_repository.display_all_theme_subject_importances()
+    print("\nПриоритет тем у научных руководителей:")
+    adviser_theme_repository.display_all_adviser_theme_priorities()
 
     distribution_repository.distribution_algorithm()
 

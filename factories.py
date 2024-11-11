@@ -1,6 +1,16 @@
 from sqlalchemy import create_engine
 from models import Base
-from repositories import *
+from repositories import (
+    StudentRepository,
+    AdviserRepository,
+    SubjectRepository,
+    ThemeRepository,
+    AdviserThemeRepository,
+    StudentSubjectGradeRepository,
+    StudentThemeInterestRepository,
+    ThemeSubjectImportanceRepository,
+    DistributionRepository
+)
 
 class RepositoryFactory:
     @staticmethod
@@ -28,6 +38,12 @@ class RepositoryFactory:
         return ThemeRepository(engine)
 
     @staticmethod
+    def create_adviser_theme_repository(db_url):
+        engine = create_engine(db_url)
+        Base.metadata.create_all(engine)
+        return AdviserThemeRepository(engine)
+
+    @staticmethod
     def create_student_subject_grade_repository(db_url):
         engine = create_engine(db_url)
         Base.metadata.create_all(engine)
@@ -45,12 +61,6 @@ class RepositoryFactory:
         Base.metadata.create_all(engine)
         return ThemeSubjectImportanceRepository(engine)
 
-    # @staticmethod
-    # def create_adviser_group_repository(db_url):
-    #     engine = create_engine(db_url)
-    #     Base.metadata.create_all(engine)
-    #     return AdviserGroupRepository(engine)
-
     @staticmethod
     def create_distribution_repository(db_url):
         engine = create_engine(db_url)
@@ -59,6 +69,7 @@ class RepositoryFactory:
         student_grade_record_repo = RepositoryFactory.create_student_subject_grade_repository(db_url)
         student_theme_interest_repo = RepositoryFactory.create_student_theme_interest_repository(db_url)
         theme_subject_importance_repo = RepositoryFactory.create_theme_subject_importance_repository(db_url)
+        adviser_theme_repo = RepositoryFactory.create_adviser_theme_repository(db_url)
 
         return DistributionRepository(engine, student_grade_record_repo, student_theme_interest_repo,
-                                      theme_subject_importance_repo)
+                                      theme_subject_importance_repo, adviser_theme_repo)
