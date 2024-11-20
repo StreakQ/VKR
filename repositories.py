@@ -3,6 +3,7 @@ from models import (Student, Adviser, Subject, Theme,
                     ThemeSubjectImportance, StudentSubjectGrade, StudentThemeInterest, Distribution, AdviserTheme)
 from faker import Faker
 import random as rnd
+import logging
 
 fake = Faker('ru_RU')
 
@@ -431,7 +432,8 @@ class DistributionRepository:
                 session.commit()
             except Exception as e:
                 session.rollback()
-                print(f"Ошибка при добавлении распределения: {e}")
+                logging.error(f"Ошибка при добавлении распределения: {e}")
+
 
     def get_all_distributions(self):
         with self.Session() as session:
@@ -532,7 +534,7 @@ class DistributionRepository:
                 adviser_priority_dict = {(adviser_theme.adviser_id, adviser_theme.theme_id): adviser_theme.priority
                                          for adviser_theme in adviser_themes}
 
-                print("Назначение студентов преподавателям:")
+                logging.info("Начало назначения студентов к научным руководителям.")
 
                 for theme_id, student_id, total_weighted_grade, interest_level in sorted_results:
                     if student_id in assigned_students:
@@ -547,7 +549,7 @@ class DistributionRepository:
                     ).first()
 
                     if not student_interest:
-                        print(f"Студент ID {student_id} не имеет интереса к теме ID {theme_id}.")
+                        logging.warning(f"Студент ID {student_id} не имеет интереса к теме ID {theme_id}.")
                         continue
 
                     available_advisers = [
@@ -574,22 +576,29 @@ class DistributionRepository:
                             "adviser_theme_id": adviser_theme_id
                         })
                         adviser.number_of_places -= 1
-                        print(
-                            f"Студент ID: {student_id} назначен к руководителю ID : {adviser.adviser_id} по теме ID: {theme_id} "
+                        logging.info(
+                            f"Студент ID: {student_id} назначен к руководителю ID: {adviser.adviser_id} по теме ID: {theme_id} "
                             f"с приоритетом руководителя: {adviser_priority_dict.get((adviser.adviser_id, theme_id), float('inf'))}"
                         )
                         assigned_students.add(student_id)
                         assigned_themes.add(theme_id)
                     else:
                         unassigned_students.add(student_id)
-                        print(f"Студент ID {student_id} не был назначен, так как нет доступных руководителей.")
+                        logging.warning(f"Студент ID {student_id} не был назначен, так как нет доступных руководителей.")
 
                 # Добавляем все распределения в базу данных
                 for distribution in distributions_to_add:
                     self.add_distribution(**distribution)
 
         except Exception as e:
-            print(f"Ошибка при назначении студентов: {e}")
+            logging.error(f"Ошибка при назначении студентов: {e}")
+
+        if unassigned_students:
+            logging.info("Некоторые студенты не были распределены:")
+            for student_id in unassigned_students:
+                logging.info(f"Студент ID: {student_id}")
+        else:
+            logging.info("Все студенты успешно распределены к научным руководителям.")
 
         return sorted(unassigned_students)
 
