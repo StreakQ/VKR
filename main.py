@@ -32,6 +32,7 @@ def main():
     theme_subject_repository.delete_all(ThemeSubjectImportance)
     student_subject_grade_repository.delete_all(StudentSubjectGrade)
     student_theme_interest_repository.delete_all(StudentThemeInterest)
+    adviser_theme_repository.delete_all(AdviserTheme)
     distribution_repository.delete_all_distributions()
 
     # Добавляем начальные данные

@@ -1,4 +1,3 @@
-from requests import session
 from sqlalchemy.orm import sessionmaker
 from models import (Student, Adviser, Subject, Theme,
                     ThemeSubjectImportance, StudentSubjectGrade, StudentThemeInterest, Distribution, AdviserTheme)
@@ -12,59 +11,49 @@ class BaseRepository:
         self.Session = sessionmaker(bind=engine)
 
     def get_all(self, model):
-        session = self.Session()
-        try:
+        with self.Session() as session:
             return session.query(model).all()
-        finally:
-            session.close()
 
     def get_by_id(self, model, record_id):
-        session = self.Session()
-        try:
+        with self.Session() as session:
             return session.query(model).filter(model.id == record_id).first()
-        finally:
-            session.close()
 
     def delete_all(self, model):
-        session = self.Session()
-        try:
-            session.query(model).delete()
-            session.commit()
-        except Exception as e:
-            session.rollback()
-            print(e)
-        finally:
-            session.close()
+        with self.Session() as session:
+            try:
+                session.query(model).delete()
+                session.commit()
+            except Exception as e:
+                session.rollback()
+                print(e)
+
 
 class StudentRepository(BaseRepository):
     def __init__(self, engine):
         super().__init__(engine)
 
     def add_student(self, firstname, lastname, patronymic, group_student):
-        session = self.Session()
-        new_student = Student(firstname=firstname, lastname=lastname, patronymic=patronymic, group_student=group_student)
-        session.add(new_student)
-        session.commit()
-        session.close()
+        with self.Session() as session:
+            new_student = Student(firstname=firstname, lastname=lastname, patronymic=patronymic, group_student=group_student)
+            session.add(new_student)
+            session.commit()
 
     def update_student(self, student_id, firstname=None, lastname=None, patronymic=None, group_student=None):
-        session = self.Session()
-        student = self.get_by_id(Student, student_id)
-        if student:
-            if firstname: student.firstname = firstname
-            if lastname: student.lastname = lastname
-            if patronymic: student.patronymic = patronymic
-            if group_student: student.group_student = group_student
-            session.commit()
-        session.close()
+        with self.Session() as session:
+            student = self.get_by_id(Student, student_id)
+            if student:
+                if firstname: student.firstname = firstname
+                if lastname: student.lastname = lastname
+                if patronymic: student.patronymic = patronymic
+                if group_student: student.group_student = group_student
+                session.commit()
 
     def delete_student(self, student_id):
-        session = self.Session()
-        student = self.get_by_id(Student, student_id)
-        if student:
-            session.delete(student)
-            session.commit()
-        session.close()
+        with self.Session() as session:
+            student = self.get_by_id(Student, student_id)
+            if student:
+                session.delete(student)
+                session.commit()
 
     def add_initial_students(self, count=10):
         for _ in range(count):
@@ -84,30 +73,27 @@ class AdviserRepository(BaseRepository):
         super().__init__(engine)
 
     def add_adviser(self, firstname, lastname, patronymic, number_of_places):
-        session = self.Session()
-        new_adviser = Adviser(firstname=firstname, lastname=lastname, patronymic=patronymic, number_of_places=number_of_places)
-        session.add(new_adviser)
-        session.commit()
-        session.close()
+        with self.Session() as session:
+            new_adviser = Adviser(firstname=firstname, lastname=lastname, patronymic=patronymic, number_of_places=number_of_places)
+            session.add(new_adviser)
+            session.commit()
 
     def update_adviser(self, adviser_id, firstname=None, lastname=None, patronymic=None, number_of_places=None):
-        session = self.Session()
-        adviser_record = self.get_by_id(Adviser, adviser_id)
-        if adviser_record:
-            if firstname: adviser_record.firstname = firstname
-            if lastname: adviser_record.lastname = lastname
-            if patronymic: adviser_record.patronymic = patronymic
-            if number_of_places is not None: adviser_record.number_of_places = number_of_places
-            session.commit()
-        session.close()
+        with self.Session() as session:
+            adviser_record = self.get_by_id(Adviser, adviser_id)
+            if adviser_record:
+                if firstname: adviser_record.firstname = firstname
+                if lastname: adviser_record.lastname = lastname
+                if patronymic: adviser_record.patronymic = patronymic
+                if number_of_places is not None: adviser_record.number_of_places = number_of_places
+                session.commit()
 
     def delete_adviser(self, adviser_id):
-        session = self.Session()
-        adviser_record = self.get_by_id(Adviser, adviser_id)
-        if adviser_record:
-            session.delete(adviser_record)
-            session.commit()
-        session.close()
+        with self.Session() as session:
+            adviser_record = self.get_by_id(Adviser, adviser_id)
+            if adviser_record:
+                session.delete(adviser_record)
+                session.commit()
 
     def add_initial_advisers(self, count=5):
         for _ in range(count):
@@ -127,27 +113,24 @@ class SubjectRepository(BaseRepository):
         super().__init__(engine)
 
     def add_subject(self, subject_name):
-        session = self.Session()
-        new_subject = Subject(subject_name=subject_name)
-        session.add(new_subject)
-        session.commit()
-        session.close()
+        with self.Session() as session:
+            new_subject = Subject(subject_name=subject_name)
+            session.add(new_subject)
+            session.commit()
 
     def update_subject(self, subject_id, subject_name):
-        session = self.Session()
-        subject = self.get_by_id(Subject, subject_id)
-        if subject:
-            subject.subject_name = subject_name
-            session.commit()
-        session.close()
+        with self.Session() as session:
+            subject = self.get_by_id(Subject, subject_id)
+            if subject:
+                subject.subject_name = subject_name
+                session.commit()
 
     def delete_subject(self, subject_id):
-        session = self.Session()
-        subject = self.get_by_id(Subject, subject_id)
-        if subject:
-            session.delete(subject)
-            session.commit()
-        session.close()
+        with self.Session() as session:
+            subject = self.get_by_id(Subject, subject_id)
+            if subject:
+                session.delete(subject)
+                session.commit()
 
     def add_initial_subjects(self, count=5):
         subjects_list = [
@@ -184,27 +167,24 @@ class ThemeRepository(BaseRepository):
         super().__init__(engine)
 
     def add_theme(self, theme_name):
-        session = self.Session()
-        new_theme = Theme(theme_name=theme_name)
-        session.add(new_theme)
-        session.commit()
-        session.close()
+        with self.Session() as session:
+            new_theme = Theme(theme_name=theme_name)
+            session.add(new_theme)
+            session.commit()
 
     def update_theme(self, theme_id, theme_name=None):
-        session = self.Session()
-        theme_record = self.get_by_id(Theme, theme_id)
-        if theme_record:
-            if theme_name: theme_record.theme_name = theme_name
-            session.commit()
-        session.close()
+        with self.Session() as session:
+            theme_record = self.get_by_id(Theme, theme_id)
+            if theme_record:
+                if theme_name: theme_record.theme_name = theme_name
+                session.commit()
 
     def delete_theme(self, theme_id):
-        session = self.Session()
-        theme_record = self.get_by_id(Theme, theme_id)
-        if theme_record:
-            session.delete(theme_record)
-            session.commit()
-        session.close()
+        with self.Session() as session:
+            theme_record = self.get_by_id(Theme, theme_id)
+            if theme_record:
+                session.delete(theme_record)
+                session.commit()
 
     def add_initial_themes(self, count=5):
         themes = [
@@ -244,24 +224,23 @@ class AdviserThemeRepository(BaseRepository):
         self.adviser_repository = adviser_repository
         self.theme_repository = theme_repository
 
+ 
     def add_adviser_theme_priority(self, adviser_id, theme_id, priority_level):
-        session = self.Session()
-        new_adviser_theme_priority = AdviserTheme(adviser_id=adviser_id, theme_id=theme_id, priority=priority_level)
-        session.add(new_adviser_theme_priority)
-        session.commit()
-        session.close()
+        with self.Session() as session:
+            new_adviser_theme_priority = AdviserTheme(adviser_id=adviser_id, theme_id=theme_id, priority=priority_level)
+            session.add(new_adviser_theme_priority)
+            session.commit()
 
     def delete_adviser_theme_priority(self, adviser_id, theme_id, priority_level):
-        session = self.Session()
-        delete_adviser_theme_priority = session.query(AdviserTheme).filter(
-            AdviserTheme.adviser_id == adviser_id,
-            AdviserTheme.theme_id == theme_id,
-            AdviserTheme.priority == priority_level
-        ).first()
-        if delete_adviser_theme_priority:
-            session.delete(delete_adviser_theme_priority)
-            session.commit()
-        session.close()
+        with self.Session() as session:
+            delete_adviser_theme_priority = session.query(AdviserTheme).filter(
+                AdviserTheme.adviser_id == adviser_id,
+                AdviserTheme.theme_id == theme_id,
+                AdviserTheme.priority == priority_level
+            ).first()
+            if delete_adviser_theme_priority:
+                session.delete(delete_adviser_theme_priority)
+                session.commit()
 
     def display_all_adviser_theme_priorities(self):
         adviser_theme_priorities = self.get_all(AdviserTheme)
@@ -272,27 +251,25 @@ class AdviserThemeRepository(BaseRepository):
             )
 
     def init_random_priorities(self):
-        session = self.Session()
-        try:
-            advisers = self.adviser_repository.get_all(Adviser)
-            themes = self.theme_repository.get_all(Theme)
+        with self.Session() as session:
+            try:
+                advisers = self.adviser_repository.get_all(Adviser)
+                themes = self.theme_repository.get_all(Theme)
 
-            for adviser in advisers:
-                for theme in themes:
-                    priority_level = rnd.randint(1, len(themes))
+                for adviser in advisers:
+                    for theme in themes:
+                        priority_level = rnd.randint(1, len(themes))
 
-                    existing_priority = session.query(AdviserTheme).filter(
-                        AdviserTheme.theme_id == theme.theme_id,
-                        AdviserTheme.priority == priority_level
-                    ).first()
+                        existing_priority = session.query(AdviserTheme).filter(
+                            AdviserTheme.theme_id == theme.theme_id,
+                            AdviserTheme.priority == priority_level
+                        ).first()
 
-                    if existing_priority is None:
-                        self.add_adviser_theme_priority(adviser.adviser_id, theme.theme_id, priority_level)
+                        if existing_priority is None:
+                            self.add_adviser_theme_priority(adviser.adviser_id, theme.theme_id, priority_level)
 
-        except Exception as e:
-            print(f"Ошибка при инициализации приоритетов: {e}")
-        finally:
-            session.close()
+            except Exception as e:
+                print(f"Ошибка при инициализации приоритетов: {e}")
 
 
 class ThemeSubjectImportanceRepository(BaseRepository):
@@ -302,29 +279,26 @@ class ThemeSubjectImportanceRepository(BaseRepository):
         self.subject_repository = subject_repository
 
     def add_theme_subject_importance(self, theme_id, subject_id, weight):
-        session = self.Session()
-        new_theme_subject_importance = ThemeSubjectImportance(theme_id=theme_id, subject_id=subject_id, weight=weight)
-        session.add(new_theme_subject_importance)
-        session.commit()
-        session.close()
+        with self.Session() as session:
+            new_theme_subject_importance = ThemeSubjectImportance(theme_id=theme_id, subject_id=subject_id, weight=weight)
+            session.add(new_theme_subject_importance)
+            session.commit()
 
     def update_theme_subject_importance(self, theme_subject_importance_id, theme_id=None, subject_id=None, weight=None):
-        session = self.Session()
-        theme_subject_importance_record = self.get_by_id(ThemeSubjectImportance, theme_subject_importance_id)
-        if theme_subject_importance_record:
-            if theme_id is not None: theme_subject_importance_record.theme_id = theme_id
-            if subject_id is not None: theme_subject_importance_record.subject_id = subject_id
-            if weight is not None: theme_subject_importance_record.weight = weight
-            session.commit()
-        session.close()
+        with self.Session() as session:
+            theme_subject_importance_record = self.get_by_id(ThemeSubjectImportance, theme_subject_importance_id)
+            if theme_subject_importance_record:
+                if theme_id is not None: theme_subject_importance_record.theme_id = theme_id
+                if subject_id is not None: theme_subject_importance_record.subject_id = subject_id
+                if weight is not None: theme_subject_importance_record.weight = weight
+                session.commit()
 
     def delete_theme_subject_importance(self, theme_subject_importance_id):
-        session = self.Session()
-        theme_subject_importance_record = self.get_by_id(ThemeSubjectImportance, theme_subject_importance_id)
-        if theme_subject_importance_record:
-            session.delete(theme_subject_importance_record)
-            session.commit()
-        session.close()
+        with self.Session() as session:
+            theme_subject_importance_record = self.get_by_id(ThemeSubjectImportance, theme_subject_importance_id)
+            if theme_subject_importance_record:
+                session.delete(theme_subject_importance_record)
+                session.commit()
 
     def display_all_theme_subject_importances(self):
         theme_subject_importances = self.get_all(ThemeSubjectImportance)
@@ -334,29 +308,27 @@ class ThemeSubjectImportanceRepository(BaseRepository):
                 f"{importance.subject_id}, Вес: {round(importance.weight, 2)}")
 
     def add_random_importances_for_themes(self, themes, subjects, min_count=3, max_count=5):
-        session = self.Session()
-        try:
-            for theme in themes:
-                subject_count = rnd.randint(min_count, max_count)
-                selected_subjects = rnd.sample(subjects, subject_count)
+        with self.Session() as session:
+            try:
+                for theme in themes:
+                    subject_count = rnd.randint(min_count, max_count)
+                    selected_subjects = rnd.sample(subjects, subject_count)
 
-                # Генерируем случайные веса
-                weights = [rnd.uniform(0.1, 1.0) for _ in selected_subjects]
-                total_weight = sum(weights)
+                    # Генерируем случайные веса
+                    weights = [rnd.uniform(0.1, 1.0) for _ in selected_subjects]
+                    total_weight = sum(weights)
 
-                # Нормализуем веса
-                normalized_weights = [weight / total_weight for weight in weights]
+                    # Нормализуем веса
+                    normalized_weights = [weight / total_weight for weight in weights]
 
-                # Проверка на сумму весов
-                assert abs(sum(normalized_weights) - 1.0) < 1e-6, "Сумма нормализованных весов не равна 1"
+                    # Проверка на сумму весов
+                    assert abs(sum(normalized_weights) - 1.0) < 1e-6, "Сумма нормализованных весов не равна 1"
 
-                for subject, normalized_weight in zip(selected_subjects, normalized_weights):
-                    self.add_theme_subject_importance(theme.theme_id, subject.subject_id, normalized_weight)
-        except Exception as e:
-            session.rollback()
-            print(e)
-        finally:
-            session.close()
+                    for subject, normalized_weight in zip(selected_subjects, normalized_weights):
+                        self.add_theme_subject_importance(theme.theme_id, subject.subject_id, normalized_weight)
+            except Exception as e:
+                session.rollback()
+                print(e)
 
 class StudentSubjectGradeRepository(BaseRepository):
     def __init__(self, engine, student_repository, subject_repository):
@@ -365,30 +337,26 @@ class StudentSubjectGradeRepository(BaseRepository):
         self.subject_repository = subject_repository
 
     def add_student_subject_grade(self, student_id, subject_id, grade):
-        session = self.Session()
-        new_student_subject_grade = StudentSubjectGrade(student_id=student_id, subject_id=subject_id, grade=grade)
-        session.add(new_student_subject_grade)
-        session.commit()
-        session.close()
+        with self.Session() as session:
+            new_student_subject_grade = StudentSubjectGrade(student_id=student_id, subject_id=subject_id, grade=grade)
+            session.add(new_student_subject_grade)
+            session.commit()
 
     def update_student_subject_grade(self, student_subject_grade_id, student_id=None, subject_id=None, grade=None):
-        session = self.Session()
-        student_subject_grade_record = self.get_by_id(StudentSubjectGrade, student_subject_grade_id)
-        if student_subject_grade_record:
-            if student_id is not None: student_subject_grade_record.student_id = student_id
-            if subject_id is not None: student_subject_grade_record.subject_id = subject_id
-            if grade is not None: student_subject_grade_record.grade = grade
-            session.commit()
-        session.close()
+        with self.Session() as session:
+            student_subject_grade_record = self.get_by_id(StudentSubjectGrade, student_subject_grade_id)
+            if student_subject_grade_record:
+                if student_id is not None: student_subject_grade_record.student_id = student_id
+                if subject_id is not None: student_subject_grade_record.subject_id = subject_id
+                if grade is not None: student_subject_grade_record.grade = grade
+                session.commit()
 
     def delete_student_subject_grade(self, student_subject_grade_id):
-        session = self.Session()
-        student_subject_grade_record = self.get_by_id(StudentSubjectGrade, student_subject_grade_id)
-        if student_subject_grade_record:
-            session.delete(student_subject_grade_record)
-            session.commit()
-        session.close()
-
+        with self.Session() as session:
+            student_subject_grade_record = self.get_by_id(StudentSubjectGrade, student_subject_grade_id)
+            if student_subject_grade_record:
+                session.delete(student_subject_grade_record)
+                session.commit()
 
     def display_all_student_subject_grades(self):
         student_subject_grades = self.get_all(StudentSubjectGrade)
@@ -405,22 +373,19 @@ class StudentThemeInterestRepository(BaseRepository):
         self.theme_repository = theme_repository
 
     def add_student_theme_interest(self, student_id, theme_id, interest_level):
-        session = self.Session()
-        new_student_theme_interest = StudentThemeInterest(student_id=student_id, theme_id=theme_id, interest_level=interest_level)
-        session.add(new_student_theme_interest)
-        session.commit()
-        session.close()
+        with self.Session() as session:
+            new_student_theme_interest = StudentThemeInterest(student_id=student_id, theme_id=theme_id, interest_level=interest_level)
+            session.add(new_student_theme_interest)
+            session.commit()
 
     def add_multiple_student_theme_interests(self, student_id, interests):
-        session = self.Session()
-        try:
-            for theme_id, interest_level in interests:
-                self.add_student_theme_interest(student_id, theme_id, interest_level)
-        except Exception as e:
-            session.rollback()
-            print(f"Ошибка при добавлении интересов: {e}")
-        finally:
-            session.close()
+        with self.Session() as session:
+            try:
+                for theme_id, interest_level in interests:
+                    self.add_student_theme_interest(student_id, theme_id, interest_level)
+            except Exception as e:
+                session.rollback()
+                print(f"Ошибка при добавлении интересов: {e}")
 
     @staticmethod
     def generate_random_interests():
@@ -430,7 +395,7 @@ class StudentThemeInterestRepository(BaseRepository):
         return interests
 
     def initialize_student_interests(self):
-        students = self.student_repository.get_all(Student)  # Исправлено на get_all(Student)
+        students = self.student_repository.get_all(Student)
         for student in students:
             interests = self.generate_random_interests()
             self.add_multiple_student_theme_interests(student.student_id, interests)
@@ -453,35 +418,28 @@ class DistributionRepository:
         self.adviser_theme_repo = adviser_theme_repo
         self.Session = sessionmaker(bind=self.engine)
 
-    def add_distribution(self, theme_subject_importance_id, student_subject_grade_id, student_theme_interest_id,adviser_theme_id):
-        session = self.Session()
-        try:
-            new_distribution = Distribution(
-                theme_subject_importance_id=theme_subject_importance_id,
-                student_subject_grade_id=student_subject_grade_id,
-                student_theme_interest_id=student_theme_interest_id,
-                adviser_theme_id=adviser_theme_id
-            )
-            session.add(new_distribution)
-            session.commit()
-        except Exception as e:
-            session.rollback()
-            print(f"Ошибка при добавлении распределения: {e}")
-        finally:
-            session.close()
+    def add_distribution(self, theme_subject_importance_id, student_subject_grade_id, student_theme_interest_id, adviser_theme_id):
+        with self.Session() as session:
+            try:
+                new_distribution = Distribution(
+                    theme_subject_importance_id=theme_subject_importance_id,
+                    student_subject_grade_id=student_subject_grade_id,
+                    student_theme_interest_id=student_theme_interest_id,
+                    adviser_theme_id=adviser_theme_id
+                )
+                session.add(new_distribution)
+                session.commit()
+            except Exception as e:
+                session.rollback()
+                print(f"Ошибка при добавлении распределения: {e}")
 
     def get_all_distributions(self):
-        session = self.Session()
-        try:
-            distributions = session.query(Distribution).all()
-            return distributions
-        finally:
-            session.close()
+        with self.Session() as session:
+            return session.query(Distribution). all()
 
     def update_distribution(self, distribution_id, theme_subject_importance_id=None, student_subject_grade_id=None,
-                            student_theme_interest_id=None,adviser_theme_id = None):
-        session = self.Session()
-        try:
+                            student_theme_interest_id=None, adviser_theme_id=None):
+        with self.Session() as session:
             distribution_record = session.query(Distribution).filter(Distribution.distribution_id == distribution_id).first()
             if distribution_record:
                 if theme_subject_importance_id is not None:
@@ -493,40 +451,26 @@ class DistributionRepository:
                 if adviser_theme_id is not None:
                     distribution_record.adviser_theme_id = adviser_theme_id
                 session.commit()
-        except Exception as e:
-            session.rollback()
-            print(f"Ошибка при обновлении распределения: {e}")
-        finally:
-            session.close()
 
     def delete_distribution(self, distribution_id):
-        session = self.Session()
-        try:
+        with self.Session() as session:
             distribution_record = session.query(Distribution).filter(Distribution.distribution_id == distribution_id).first()
             if distribution_record:
                 session.delete(distribution_record)
                 session.commit()
-        except Exception as e:
-            session.rollback()
-            print(f"Ошибка при удалении распределения: {e}")
-        finally:
-            session.close()
 
     def delete_all_distributions(self):
-        session = self.Session()
-        try:
-            session.query(Distribution).delete()
-            session.commit()
-        except Exception as e:
-            session.rollback()
-            print(e)
-        finally:
-            session.close()
+        with self.Session() as session:
+            try:
+                session.query(Distribution).delete()
+                session.commit()
+            except Exception as e:
+                session.rollback()
+                print(e)
 
     def link_theme_subject_importance_with_student_subject_grade(self):
-        session = self.Session()
         suitability_scores = {}
-        try:
+        with self.Session() as session:
             theme_subject_importance_records = session.query(ThemeSubjectImportance).all()
             student_subject_grade_records = session.query(StudentSubjectGrade).all()
 
@@ -558,14 +502,11 @@ class DistributionRepository:
                 max_possible_score = sum(weight * 5 for weight in subject_weights[key[0]].values())
                 suitability_scores[key] = (suitability_scores[key] / max_possible_score) * 100
 
-        finally:
-            session.close()
         return suitability_scores
 
     def link_weighted_grades_with_interest(self):
-        session = self.Session()
         result = []
-        try:
+        with self.Session() as session:
             suitability_scores = self.link_theme_subject_importance_with_student_subject_grade()
             student_theme_interests = session.query(StudentThemeInterest).all()
 
@@ -575,79 +516,80 @@ class DistributionRepository:
                 if interest_level is not None:
                     result.append((theme_id, student_id, suitability_score, interest_level))
 
-        finally:
-            session.close()
         return result
 
     def assign_students_to_advisers(self, sorted_results):
-        session = self.Session()
         unassigned_students = set()
         assigned_students = set()
         assigned_themes = set()
+        distributions_to_add = []
 
         try:
-            advisers = {adviser.adviser_id: adviser for adviser in session.query(Adviser).all()}
-            adviser_themes = session.query(AdviserTheme).all()
+            with self.Session() as session:
+                advisers = {adviser.adviser_id: adviser for adviser in session.query(Adviser).all()}
+                adviser_themes = session.query(AdviserTheme).all()
 
-            adviser_priority_dict = {(adviser_theme.adviser_id, adviser_theme.theme_id): adviser_theme.priority
-                                     for adviser_theme in adviser_themes}
+                adviser_priority_dict = {(adviser_theme.adviser_id, adviser_theme.theme_id): adviser_theme.priority
+                                         for adviser_theme in adviser_themes}
 
-            print("Назначение студентов преподавателям:")
+                print("Назначение студентов преподавателям:")
 
-            for theme_id, student_id, total_weighted_grade, interest_level in sorted_results:
-                if student_id in assigned_students:
-                    continue
+                for theme_id, student_id, total_weighted_grade, interest_level in sorted_results:
+                    if student_id in assigned_students:
+                        continue
 
-                if theme_id in assigned_themes:
-                    continue
+                    if theme_id in assigned_themes:
+                        continue
 
-                student_interest = session.query(StudentThemeInterest).filter(
-                    StudentThemeInterest.student_id == student_id,
-                    StudentThemeInterest.theme_id == theme_id
-                ).first()
+                    student_interest = session.query(StudentThemeInterest).filter(
+                        StudentThemeInterest.student_id == student_id,
+                        StudentThemeInterest.theme_id == theme_id
+                    ).first()
 
-                if not student_interest:
-                    continue
+                    if not student_interest:
+                        print(f"Студент ID {student_id} не имеет интереса к теме ID {theme_id}.")
+                        continue
 
-                available_advisers = [
-                    adviser for adviser in advisers.values()
-                    if adviser.number_of_places > 0 and any(
-                        adviser_theme.theme_id == theme_id for adviser_theme in adviser_themes if
-                        adviser_theme.adviser_id == adviser.adviser_id
-                    )
-                ]
+                    available_advisers = [
+                        adviser for adviser in advisers.values()
+                        if adviser.number_of_places > 0 and any(
+                            adviser_theme.theme_id == theme_id for adviser_theme in adviser_themes if
+                            adviser_theme.adviser_id == adviser.adviser_id
+                        )
+                    ]
 
-                if available_advisers:
-                    available_advisers.sort(
-                        key=lambda x: adviser_priority_dict.get((x.adviser_id, theme_id), float('inf'))
-                    )
+                    if available_advisers:
+                        available_advisers.sort(
+                            key=lambda x: adviser_priority_dict.get((x.adviser_id, theme_id), float('inf'))
+                        )
 
-                    # Выбираем руководителя с наивысшим приоритетом
-                    adviser = available_advisers[0]
-                    adviser_theme_id = next((adviser_theme.theme_id for adviser_theme in adviser_themes if
-                                             adviser_theme.adviser_id == adviser.adviser_id), None)
+                        adviser = available_advisers[0]
+                        adviser_theme_id = next((adviser_theme.theme_id for adviser_theme in adviser_themes if
+                                                 adviser_theme.adviser_id == adviser.adviser_id), None)
 
-                    self.add_distribution(
-                        theme_subject_importance_id=theme_id,
-                        student_subject_grade_id=student_id,
-                        student_theme_interest_id=student_interest.student_theme_interest_id,
-                        adviser_theme_id=adviser_theme_id
-                    )
-                    adviser.number_of_places -= 1
-                    print(
-                        f"Студент ID: {student_id} назначен к руководителю ID : {adviser.adviser_id} по теме ID: {theme_id} "
-                        f"с приоритетом руководителя: {adviser_priority_dict.get((adviser.adviser_id, theme_id), float('inf'))}"
-                    )
-                    assigned_students.add(student_id)
-                    assigned_themes.add(theme_id)
-                else:
-                    unassigned_students.add(student_id)
+                        distributions_to_add.append({
+                            "theme_subject_importance_id": theme_id,
+                            "student_subject_grade_id": student_id,
+                            "student_theme_interest_id": student_interest.student_theme_interest_id,
+                            "adviser_theme_id": adviser_theme_id
+                        })
+                        adviser.number_of_places -= 1
+                        print(
+                            f"Студент ID: {student_id} назначен к руководителю ID : {adviser.adviser_id} по теме ID: {theme_id} "
+                            f"с приоритетом руководителя: {adviser_priority_dict.get((adviser.adviser_id, theme_id), float('inf'))}"
+                        )
+                        assigned_students.add(student_id)
+                        assigned_themes.add(theme_id)
+                    else:
+                        unassigned_students.add(student_id)
+                        print(f"Студент ID {student_id} не был назначен, так как нет доступных руководителей.")
+
+                # Добавляем все распределения в базу данных
+                for distribution in distributions_to_add:
+                    self.add_distribution(**distribution)
 
         except Exception as e:
-            session.rollback()
             print(f"Ошибка при назначении студентов: {e}")
-        finally:
-            session.close()
 
         return sorted(unassigned_students)
 
@@ -670,6 +612,3 @@ class DistributionRepository:
                 print(f"Студент ID: {student_id}")
         else:
             print("Все студенты успешно распределены к научным руководителям.")
-
-
-
