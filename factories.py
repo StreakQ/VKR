@@ -66,10 +66,10 @@ class RepositoryFactory:
         engine = create_engine(db_url)
         Base.metadata.create_all(engine)
 
-        student_grade_record_repo = RepositoryFactory.create_student_subject_grade_repository(db_url)
+        student_subject_grade_repo = RepositoryFactory.create_student_subject_grade_repository(db_url)
         student_theme_interest_repo = RepositoryFactory.create_student_theme_interest_repository(db_url)
         theme_subject_importance_repo = RepositoryFactory.create_theme_subject_importance_repository(db_url)
         adviser_theme_repo = RepositoryFactory.create_adviser_theme_repository(db_url)
 
-        return DistributionRepository(engine, student_grade_record_repo, student_theme_interest_repo,
+        return DistributionRepository(engine, student_subject_grade_repo, student_theme_interest_repo,
                                       theme_subject_importance_repo, adviser_theme_repo)

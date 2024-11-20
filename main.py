@@ -16,20 +16,19 @@ def main():
     adviser_repository = AdviserRepository(engine)
 
     theme_repository = ThemeRepository(engine)
-    theme_subject_repository = ThemeSubjectImportanceRepository(engine, theme_repository, subject_repository)
+    theme_subject_importance_repository = ThemeSubjectImportanceRepository(engine, theme_repository, subject_repository)
     student_subject_grade_repository = StudentSubjectGradeRepository(engine, student_repository, subject_repository)
     student_theme_interest_repository = StudentThemeInterestRepository(engine, student_repository, theme_repository)
     adviser_theme_repository = AdviserThemeRepository(engine,adviser_repository,theme_repository)
-    distribution_repository = DistributionRepository(engine, student_subject_grade_repository,
-                                                     student_theme_interest_repository, theme_subject_repository,
-                                                     adviser_theme_repository)
+    distribution_repository = DistributionRepository(engine, student_subject_grade_repository, student_theme_interest_repository,
+                                      theme_subject_importance_repository, adviser_theme_repository)
 
     # Очищаем репозитории
     student_repository.delete_all(Student)
     subject_repository.delete_all(Subject)
     adviser_repository.delete_all(Adviser)
     theme_repository.delete_all(Theme)
-    theme_subject_repository.delete_all(ThemeSubjectImportance)
+    theme_subject_importance_repository.delete_all(ThemeSubjectImportance)
     student_subject_grade_repository.delete_all(StudentSubjectGrade)
     student_theme_interest_repository.delete_all(StudentThemeInterest)
     adviser_theme_repository.delete_all(AdviserTheme)
@@ -60,10 +59,10 @@ def main():
     for theme in themes:
         for subject in subjects:
             weight = rnd.uniform(0.1, 1)
-            theme_subject_repository.add_theme_subject_importance(theme.theme_id, subject.subject_id, weight)
+            theme_subject_importance_repository.add_theme_subject_importance(theme.theme_id, subject.subject_id, weight)
 
     adviser_theme_repository.init_random_priorities()
-    theme_subject_repository.add_random_importances_for_themes(themes, subjects)
+    theme_subject_importance_repository.add_random_importances_for_themes(themes, subjects)
     student_theme_interest_repository.initialize_student_interests()
 
     print("Студенты:")
@@ -79,7 +78,7 @@ def main():
     print("\nИнтересы студентов к темам:")
     student_theme_interest_repository.display_all_student_theme_interests()
     print("\nВажность тем для предметов:")
-    theme_subject_repository.display_all_theme_subject_importances()
+    theme_subject_importance_repository.display_all_theme_subject_importances()
     print("\nПриоритет тем у научных руководителей:")
     adviser_theme_repository.display_all_adviser_theme_priorities()
 

@@ -419,15 +419,16 @@ class DistributionRepository:
         self.adviser_theme_repo = adviser_theme_repo
         self.Session = sessionmaker(bind=self.engine)
 
-    def add_distribution(self, theme_subject_importance_id, student_subject_grade_id, student_theme_interest_id, adviser_theme_id):
+    def add_distribution(self, student_subject_grade_id,student_theme_interest_id, theme_subject_importance_id, adviser_theme_id):
         with self.Session() as session:
+            new_distribution = Distribution(
+
+                student_subject_grade_id=student_subject_grade_id,
+                student_theme_interest_id=student_theme_interest_id,
+                theme_subject_importance_id = theme_subject_importance_id,
+                adviser_theme_id=adviser_theme_id
+            )
             try:
-                new_distribution = Distribution(
-                    theme_subject_importance_id=theme_subject_importance_id,
-                    student_subject_grade_id=student_subject_grade_id,
-                    student_theme_interest_id=student_theme_interest_id,
-                    adviser_theme_id=adviser_theme_id
-                )
                 session.add(new_distribution)
                 session.commit()
             except Exception as e:
