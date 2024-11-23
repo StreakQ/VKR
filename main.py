@@ -74,12 +74,12 @@ def main():
     adviser_repository.display_all_advisers()
     print("\nТемы:")
     theme_repository.display_all_themes()
-    print("\nОценки студентов:")
-    student_subject_grade_repository.display_all_student_subject_grades()
+    # print("\nОценки студентов:")
+    # student_subject_grade_repository.display_all_student_subject_grades()
     print("\nИнтересы студентов к темам:")
     student_theme_interest_repository.display_all_student_theme_interests()
-    print("\nВажность тем для предметов:")
-    theme_subject_importance_repository.display_all_theme_subject_importances()
+    # print("\nВажность тем для предметов:")
+    # theme_subject_importance_repository.display_all_theme_subject_importances()
     print("\nПриоритет тем у научных руководителей:")
     adviser_theme_repository.display_all_adviser_theme_priorities()
 
@@ -95,13 +95,21 @@ def main():
     print("\nДанные, полученные алгоритмом распределения:")
     with distribution_repository.Session() as session:
         for distribution in distribution_repository.get_all_distributions():
-
             # Форматируем вывод
             print(f"ID Распределения: {distribution.distribution_id}, "
                   f"ID Связи темы и важных для нее предметов: {distribution.theme_subject_importance_id}, "
                   f"ID Связи предметов и оценок: {distribution.student_subject_grade_id}, "
                   f"ID Связи интереса студента и темы: {distribution.student_theme_interest_id}, "
                   f"ID Связи научного руководителя и темы: {distribution.adviser_theme_id}")
+
+            # Извлекаем student_id, theme_id и adviser_id
+            student_id, theme_id, adviser_id = distribution_repository.get_student_theme_and_adviser_by_distribution_id(
+                distribution.distribution_id)
+
+            if student_id is not None and theme_id is not None and adviser_id is not None:
+                print(f"Студент ID: {student_id}, Тема ID: {theme_id}, Научный руководитель ID: {adviser_id}")
+            else:
+                print("Не удалось найти распределение с указанным ID.")
 
 if __name__ == "__main__":
     main()

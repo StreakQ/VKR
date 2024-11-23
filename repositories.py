@@ -431,10 +431,10 @@ class DistributionAlgorithmRepository(BaseRepository):
             theme_subject_importance_records = session.query(ThemeSubjectImportance).all()
             student_subject_grade_records = session.query(StudentSubjectGrade).all()
 
-            print("Темы и важность предметов:")
-            for importance in theme_subject_importance_records:
-                print(
-                    f"Тема ID: {importance.theme_id}, Предмет ID: {importance.subject_id}, Вес: {round(importance.weight, 2)}")
+            # print("Темы и важность предметов:")
+            # for importance in theme_subject_importance_records:
+            #     print(
+            #         f"Тема ID: {importance.theme_id}, Предмет ID: {importance.subject_id}, Вес: {round(importance.weight, 2)}")
 
             subject_weights = {}
             for importance in theme_subject_importance_records:
@@ -465,18 +465,18 @@ class DistributionAlgorithmRepository(BaseRepository):
 
                             suitability_scores[(theme_id, student_id)] += weighted_grade
 
-            print("\nСуммарные взвешенные оценки:")
-            for key, score in suitability_scores.items():
-                print(f"Тема ID: {key[0]}, Студент ID: {key[1]}, Взвешенная оценка: {round(score, 2)}")
+            # print("\nСуммарные взвешенные оценки:")
+            # for key, score in suitability_scores.items():
+            #     print(f"Тема ID: {key[0]}, Студент ID: {key[1]}, Взвешенная оценка: {round(score, 2)}")
 
             for key in suitability_scores:
                 max_possible_score = sum(weight * 5 for weight in subject_weights[key[0]].values())
                 normalized_score = (suitability_scores[key] / max_possible_score) * 100 if max_possible_score > 0 else 0
                 suitability_scores[key] = round(normalized_score, 2)
 
-            print("\nНормализованные оценки соответствия:")
-            for key, score in suitability_scores.items():
-                print(f"Тема ID: {key[0]}, Студент ID: {key[1]}, Степень подходимости студента к теме: {score:.2f}%")
+            # print("\nНормализованные оценки соответствия:")
+            # for key, score in suitability_scores.items():
+            #     print(f"Тема ID: {key[0]}, Студент ID: {key[1]}, Степень подходимости студента к теме: {score:.2f}%")
 
         return suitability_scores
 
@@ -665,3 +665,33 @@ class DistributionRepository(BaseRepository):
             except Exception as e:
                 session.rollback()
                 logging.exception("Ошибка при добавлении распределений: %s", e)
+
+    def get_student_theme_and_adviser_by_distribution_id(self, distribution_id):
+        with self.Session() as session:
+            # Получаем распределение по ID
+            distribution_record = session.query(Distribution).filter(
+                Distribution.distribution_id == distribution_id).first()
+            if distribution_record:
+                # Извлекаем student_theme_interest_id и adviser_theme_id
+                student_theme_interest_id = distribution_record.student_theme_interest_id
+                adviser_theme_id = distribution_record.adviser_theme_id
+
+                # Получаем student_id и theme_id непосредственно из таблицы StudentThemeInterest
+                interest_record = session.query(StudentThemeInterest).filter(
+                    StudentThemeInterest.student_theme_interest_id == student_theme_interest_id).first()
+                if interest_record:
+                    student_id = interest_record.student_id
+                    theme_id = interest_record.theme_id
+                else:
+                    student_id, theme_id = None, None
+
+                # Получаем adviser_id непосредственно из таблицы AdviserTheme
+                adviser_theme_record = session.query(AdviserTheme).filter(AdviserTheme.adviser_theme_id == adviser_theme_id).first()
+                if adviser_theme_record:
+                    adviser_id = adviser_theme_record.adviser_id
+                else:
+                    adviser_id = None
+
+                return student_id, theme_id, adviser_id
+
+            return None, None, None
