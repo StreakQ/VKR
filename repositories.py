@@ -1,6 +1,6 @@
 from sqlalchemy.orm import sessionmaker
 from models import (Student, Adviser, Subject, Theme,
-                    ThemeSubjectImportance, StudentSubjectGrade, StudentThemeInterest, Distribution, AdviserTheme)
+                    ThemeSubjectImportance, StudentSubjectGrade, StudentThemeInterest, Distribution, AdviserTheme, DistributionAlgorithm)
 from faker import Faker
 import random as rnd
 import logging
@@ -225,7 +225,7 @@ class AdviserThemeRepository(BaseRepository):
         self.adviser_repository = adviser_repository
         self.theme_repository = theme_repository
 
- 
+
     def add_adviser_theme_priority(self, adviser_id, theme_id, priority_level):
         with self.Session() as session:
             new_adviser_theme_priority = AdviserTheme(adviser_id=adviser_id, theme_id=theme_id, priority=priority_level)
@@ -409,39 +409,194 @@ class StudentThemeInterestRepository(BaseRepository):
                 f"ID Темы: {interest.theme_id}, Уровень интереса: {interest.interest_level}")
 
 
-class DistributionRepository:
-    def __init__(self, engine, student_subject_grade_repo, student_theme_interest_repo,
-                 theme_subject_importance_repo, adviser_theme_repo):
-        self.engine = engine
-        self.student_grade_record_repo = student_subject_grade_repo
-        self.student_theme_interest_repo = student_theme_interest_repo
-        self.theme_subject_importance_repo = theme_subject_importance_repo
-        self.adviser_theme_repo = adviser_theme_repo
-        self.Session = sessionmaker(bind=self.engine)
+class DistributionAlgorithmRepository(BaseRepository):
+    def __init__(self,engine, student_subject_grade_repository, student_theme_interest_repository,
+                 theme_subject_importance_repository, adviser_theme_repository):
+        super().__init__(engine)
+        self.student_grade_record_repository = student_subject_grade_repository
+        self.student_theme_interest_repository = student_theme_interest_repository
+        self.theme_subject_importance_repository = theme_subject_importance_repository
+        self.adviser_theme_repository = adviser_theme_repository
 
-    def add_distribution(self, student_subject_grade_id,student_theme_interest_id, theme_subject_importance_id, adviser_theme_id):
+    def create_distribution_algorithm(self):
         with self.Session() as session:
-            new_distribution = Distribution(
+            new_algorithm = DistributionAlgorithm()
+            session.add(new_algorithm)
+            session.commit()
+            return new_algorithm.distribution_algorithm_id
 
-                student_subject_grade_id=student_subject_grade_id,
-                student_theme_interest_id=student_theme_interest_id,
-                theme_subject_importance_id = theme_subject_importance_id,
-                adviser_theme_id=adviser_theme_id
-            )
+    def link_theme_subject_importance_with_student_subject_grade(self):
+        suitability_scores = {}
+        with self.student_grade_record_repository.Session() as session:
+            theme_subject_importance_records = session.query(ThemeSubjectImportance).all()
+            student_subject_grade_records = session.query(StudentSubjectGrade).all()
+
+            print("Темы и важность предметов:")
+            for importance in theme_subject_importance_records:
+                print(
+                    f"Тема ID: {importance.theme_id}, Предмет ID: {importance.subject_id}, Вес: {round(importance.weight, 2)}")
+
+            subject_weights = {}
+            for importance in theme_subject_importance_records:
+                theme_id = importance.theme_id
+                subject_id = importance.subject_id
+                weight = importance.weight
+
+                if theme_id not in subject_weights:
+                    subject_weights[theme_id] = {}
+                subject_weights[theme_id][subject_id] = weight
+
+            print("\nВеса предметов по темам:")
+            for theme_id, subjects in subject_weights.items():
+                print(
+                    f"Тема ID: {theme_id}, Предметы и веса: { {subj_id: round(weight, 2) for subj_id, weight in subjects.items()} }")
+
+            for theme_id, subjects in subject_weights.items():
+                for subject_id, weight in subjects.items():
+                    for grade_record in student_subject_grade_records:
+                        if grade_record.subject_id == subject_id:
+                            student_id = grade_record.student_id
+                            grade = grade_record.grade
+
+                            weighted_grade = grade * weight
+
+                            if (theme_id, student_id) not in suitability_scores:
+                                suitability_scores[(theme_id, student_id)] = 0
+
+                            suitability_scores[(theme_id, student_id)] += weighted_grade
+
+            print("\nСуммарные взвешенные оценки:")
+            for key, score in suitability_scores.items():
+                print(f"Тема ID: {key[0]}, Студент ID: {key[1]}, Взвешенная оценка: {round(score, 2)}")
+
+            for key in suitability_scores:
+                max_possible_score = sum(weight * 5 for weight in subject_weights[key[0]].values())
+                normalized_score = (suitability_scores[key] / max_possible_score) * 100 if max_possible_score > 0 else 0
+                suitability_scores[key] = round(normalized_score, 2)
+
+            print("\nНормализованные оценки соответствия:")
+            for key, score in suitability_scores.items():
+                print(f"Тема ID: {key[0]}, Студент ID: {key[1]}, Степень подходимости студента к теме: {score:.2f}%")
+
+        return suitability_scores
+
+    def link_weighted_grades_with_interest(self):
+        result = []
+        with self.student_theme_interest_repository.Session() as session:
+            suitability_scores = self.link_theme_subject_importance_with_student_subject_grade()
+            student_theme_interests = session.query(StudentThemeInterest).all()
+
+            for (theme_id, student_id), suitability_score in suitability_scores.items():
+                interest_level = next((interest.interest_level for interest in student_theme_interests
+                                       if interest.student_id == student_id and interest.theme_id == theme_id), None)
+                if interest_level is not None:
+                    result.append((theme_id, student_id, suitability_score, interest_level))
+
+            # Сортировка результатов
+            result.sort(key=lambda x: (-x[2], x[3], x[1], x[0]))
+
+            print("\nРезультаты соответствия тем и интересов студентов:")
+            for theme_id, student_id, suitability_score, interest_level in result:
+                print(f"Студент ID: {student_id}, Тема ID: {theme_id}, "
+                      f"Степень подходимости: {round(suitability_score, 2)}%, "
+                      f"Уровень интереса: {interest_level}")
+
+        return result
+
+    def assign_students_to_advisers(self, sorted_results):
+        unassigned_students = set()
+        assigned_students = set()
+        assigned_themes = set()
+        distributions_to_add = []
+
+        with self.student_theme_interest_repository.Session() as session:
+            advisers = {adviser.adviser_id: adviser for adviser in session.query(Adviser).all()}
+            adviser_themes = session.query(AdviserTheme).all()
+
+            adviser_priority_dict = {(adviser_theme.adviser_id, adviser_theme.theme_id): adviser_theme.priority
+                                     for adviser_theme in adviser_themes}
+
+            for theme_id, student_id, total_weighted_grade, interest_level in sorted_results:
+                # Проверяем, был ли студент уже назначен на эту тему
+                if student_id in assigned_students:
+                    continue
+                if theme_id in assigned_themes:
+                    continue
+
+                student_interest = session.query(StudentThemeInterest).filter(
+                    StudentThemeInterest.student_id == student_id,
+                    StudentThemeInterest.theme_id == theme_id
+                ).first()
+
+                if not student_interest:
+                    continue
+
+                # Находим доступных научных руководителей для данной темы
+                available_advisers = [
+                    adviser for adviser in advisers.values()
+                    if adviser.number_of_places > 0 and any(
+                        adviser_theme.theme_id == theme_id for adviser_theme in adviser_themes if
+                        adviser_theme.adviser_id == adviser.adviser_id
+                    )
+                ]
+
+                if available_advisers:
+                    available_advisers.sort(
+                        key=lambda x: adviser_priority_dict.get((x.adviser_id, theme_id), float('inf'))
+                    )
+
+                    adviser = available_advisers[0]
+                    adviser_theme_id = next((adviser_theme.theme_id for adviser_theme in adviser_themes if
+                                             adviser_theme.adviser_id == adviser.adviser_id), None)
+
+                    # Добавляем распределение
+                    distributions_to_add.append({
+                        "theme_subject_importance_id": theme_id,
+                        "student_subject_grade_id": student_id,
+                        "student_theme_interest_id": student_interest.student_theme_interest_id,
+                        "adviser_theme_id": adviser_theme_id
+                    })
+                    adviser.number_of_places -= 1
+                    assigned_students.add(student_id)  # Добавляем студента в список назначенных
+                    assigned_themes.add(theme_id)  # Добавляем тему в список назначенных
+                else:
+                    unassigned_students.add(student_id)
+
+        return distributions_to_add, unassigned_students
+
+    def distribution_algorithm(self):
+        suitability_results = self.link_weighted_grades_with_interest()
+        sorted_results = sorted(suitability_results, key=lambda x: (x[3], -x[2], x[0]))
+
+        distributions_to_add, unassigned_students = self.assign_students_to_advisers(sorted_results)
+        return distributions_to_add, unassigned_students
+
+
+class DistributionRepository(BaseRepository):
+    def __init__(self, engine, student_subject_grade_repository, student_theme_interest_repository,
+                 theme_subject_importance_repository, adviser_theme_repository, distribution_algorithm_repository):
+        super().__init__(engine)
+        self.student_grade_record_repository = student_subject_grade_repository
+        self.student_theme_interest_repository = student_theme_interest_repository
+        self.theme_subject_importance_repository = theme_subject_importance_repository
+        self.adviser_theme_repository = adviser_theme_repository
+        self.distribution_algorithm_repository = distribution_algorithm_repository
+
+    def add_distribution(self, distributions):
+        with self.Session() as session:
             try:
-                session.add(new_distribution)
+                session.bulk_insert_mappings(Distribution, distributions)
                 session.commit()
             except Exception as e:
                 session.rollback()
-                logging.error(f"Ошибка при добавлении распределения: {e}")
-
+                logging.error(f"Ошибка при добавлении распределений: {e}")
 
     def get_all_distributions(self):
         with self.Session() as session:
-            return session.query(Distribution). all()
+            return session.query(Distribution).all()
 
     def update_distribution(self, distribution_id, theme_subject_importance_id=None, student_subject_grade_id=None,
-                            student_theme_interest_id=None, adviser_theme_id=None):
+                            student_theme_interest_id=None, adviser_theme_id=None, distribution_algorithm_id=None):
         with self.Session() as session:
             distribution_record = session.query(Distribution).filter(Distribution.distribution_id == distribution_id).first()
             if distribution_record:
@@ -453,6 +608,8 @@ class DistributionRepository:
                     distribution_record.student_theme_interest_id = student_theme_interest_id
                 if adviser_theme_id is not None:
                     distribution_record.adviser_theme_id = adviser_theme_id
+                if distribution_algorithm_id is not None:
+                    distribution_record.distribution_algorithm_id = distribution_algorithm_id
                 session.commit()
 
     def delete_distribution(self, distribution_id):
@@ -471,154 +628,40 @@ class DistributionRepository:
                 session.rollback()
                 print(e)
 
-    def link_theme_subject_importance_with_student_subject_grade(self):
-        suitability_scores = {}
+    def process_distributions(self, distributions_to_add, distribution_algorithm_id):
         with self.Session() as session:
-            theme_subject_importance_records = session.query(ThemeSubjectImportance).all()
-            student_subject_grade_records = session.query(StudentSubjectGrade).all()
-
-            subject_weights = {}
-            for importance in theme_subject_importance_records:
-                theme_id = importance.theme_id
-                subject_id = importance.subject_id
-                weight = importance.weight
-
-                if theme_id not in subject_weights:
-                    subject_weights[theme_id] = {}
-                subject_weights[theme_id][subject_id] = weight
-
-            for theme_id, subjects in subject_weights.items():
-                for subject_id, weight in subjects.items():
-                    for grade_record in student_subject_grade_records:
-                        if grade_record.subject_id == subject_id:
-                            student_id = grade_record.student_id
-                            grade = grade_record.grade
-
-                            weighted_grade = grade * weight
-
-                            if (theme_id, student_id) not in suitability_scores:
-                                suitability_scores[(theme_id, student_id)] = 0
-
-                            suitability_scores[(theme_id, student_id)] += weighted_grade
-
-            for key in suitability_scores:
-                max_possible_score = sum(weight * 5 for weight in subject_weights[key[0]].values())
-                suitability_scores[key] = (suitability_scores[key] / max_possible_score) * 100
-
-        return suitability_scores
-
-    def link_weighted_grades_with_interest(self):
-        result = []
-        with self.Session() as session:
-            suitability_scores = self.link_theme_subject_importance_with_student_subject_grade()
-            student_theme_interests = session.query(StudentThemeInterest).all()
-
-            for (theme_id, student_id), suitability_score in suitability_scores.items():
-                interest_level = next((interest.interest_level for interest in student_theme_interests
-                                       if interest.student_id == student_id and interest.theme_id == theme_id), None)
-                if interest_level is not None:
-                    result.append((theme_id, student_id, suitability_score, interest_level))
-
-        return result
-
-    def assign_students_to_advisers(self, sorted_results):
-        unassigned_students = set()
-        assigned_students = set()
-        assigned_themes = set()
-        distributions_to_add = []
-
-        try:
-            with self.Session() as session:
-                advisers = {adviser.adviser_id: adviser for adviser in session.query(Adviser).all()}
-                adviser_themes = session.query(AdviserTheme).all()
-
-                adviser_priority_dict = {(adviser_theme.adviser_id, adviser_theme.theme_id): adviser_theme.priority
-                                         for adviser_theme in adviser_themes}
-
-                logging.info("Начало назначения студентов к научным руководителям.")
-
-                for theme_id, student_id, total_weighted_grade, interest_level in sorted_results:
-                    if student_id in assigned_students:
+            try:
+                for distribution in distributions_to_add:
+                    # Проверяем наличие всех необходимых ключей
+                    if not all(key in distribution for key in
+                               ["theme_subject_importance_id", "student_subject_grade_id", "student_theme_interest_id",
+                                "adviser_theme_id"]):
+                        logging.error("Недостаточно данных для распределения: %s", distribution)
                         continue
 
-                    if theme_id in assigned_themes:
-                        continue
-
-                    student_interest = session.query(StudentThemeInterest).filter(
-                        StudentThemeInterest.student_id == student_id,
-                        StudentThemeInterest.theme_id == theme_id
+                    # Проверка на существование распределения для данного студента и темы
+                    existing_distribution = session.query(Distribution).filter(
+                        Distribution.student_subject_grade_id == distribution["student_subject_grade_id"],
+                        Distribution.theme_subject_importance_id == distribution["theme_subject_importance_id"],
+                        Distribution.adviser_theme_id == distribution["adviser_theme_id"]
                     ).first()
 
-                    if not student_interest:
-                        logging.warning(f"Студент ID {student_id} не имеет интереса к теме ID {theme_id}.")
+                    if existing_distribution:
+                        logging.warning(
+                            f"Распределение уже существует для студента ID {distribution['student_subject_grade_id']} "
+                            f"и темы ID {distribution['theme_subject_importance_id']}. Пропускаем.")
                         continue
 
-                    available_advisers = [
-                        adviser for adviser in advisers.values()
-                        if adviser.number_of_places > 0 and any(
-                            adviser_theme.theme_id == theme_id for adviser_theme in adviser_themes if
-                            adviser_theme.adviser_id == adviser.adviser_id
-                        )
-                    ]
-
-                    if available_advisers:
-                        available_advisers.sort(
-                            key=lambda x: adviser_priority_dict.get((x.adviser_id, theme_id), float('inf'))
-                        )
-
-                        adviser = available_advisers[0]
-                        adviser_theme_id = next((adviser_theme.theme_id for adviser_theme in adviser_themes if
-                                                 adviser_theme.adviser_id == adviser.adviser_id), None)
-
-                        distributions_to_add.append({
-                            "theme_subject_importance_id": theme_id,
-                            "student_subject_grade_id": student_id,
-                            "student_theme_interest_id": student_interest.student_theme_interest_id,
-                            "adviser_theme_id": adviser_theme_id
-                        })
-                        adviser.number_of_places -= 1
-                        logging.info(
-                            f"Студент ID: {student_id} назначен к руководителю ID: {adviser.adviser_id} по теме ID: {theme_id} "
-                            f"с приоритетом руководителя: {adviser_priority_dict.get((adviser.adviser_id, theme_id), float('inf'))}"
-                        )
-                        assigned_students.add(student_id)
-                        assigned_themes.add(theme_id)
-                    else:
-                        unassigned_students.add(student_id)
-                        logging.warning(f"Студент ID {student_id} не был назначен, так как нет доступных руководителей.")
-
-                # Добавляем все распределения в базу данных
-                for distribution in distributions_to_add:
-                    self.add_distribution(**distribution)
-
-        except Exception as e:
-            logging.error(f"Ошибка при назначении студентов: {e}")
-
-        if unassigned_students:
-            logging.info("Некоторые студенты не были распределены:")
-            for student_id in unassigned_students:
-                logging.info(f"Студент ID: {student_id}")
-        else:
-            logging.info("Все студенты успешно распределены к научным руководителям.")
-
-        return sorted(unassigned_students)
-
-    def distribution_algorithm(self):
-        suitability_results = self.link_weighted_grades_with_interest()
-        sorted_results = sorted(suitability_results, key=lambda x: (x[3], -x[2], x[0]))
-
-        print("\nРезультаты сортировки студентов по уровню интереса и степени подходимости :")
-        for theme_id, student_id, suitability_score, interest_level in sorted_results:
-            print(
-                f"Тема ID: {theme_id}, Студент ID: {student_id}, Степень подходимости: {round(suitability_score, 2)}%, "
-                f"Уровень интереса: {interest_level}"
-            )
-
-        unassigned_students = self.assign_students_to_advisers(sorted_results)
-
-        if unassigned_students:
-            print("Некоторые студенты не были распределены:")
-            for student_id in unassigned_students:
-                print(f"Студент ID: {student_id}")
-        else:
-            print("Все студенты успешно распределены к научным руководителям.")
+                    # Создаем новое распределение
+                    new_distribution = Distribution(
+                        distribution_algorithm_id=distribution_algorithm_id,
+                        theme_subject_importance_id=distribution["theme_subject_importance_id"],
+                        student_subject_grade_id=distribution["student_subject_grade_id"],
+                        student_theme_interest_id=distribution["student_theme_interest_id"],
+                        adviser_theme_id=distribution["adviser_theme_id"]
+                    )
+                    session.add(new_distribution)
+                session.commit()
+            except Exception as e:
+                session.rollback()
+                logging.exception("Ошибка при добавлении распределений: %s", e)

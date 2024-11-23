@@ -5,7 +5,7 @@ import random as rnd
 
 
 def main():
-    engine = create_engine("sqlite:///database.db")
+    engine = create_engine('sqlite:///database.db')
 
     Base.metadata.drop_all(engine)
     Base.metadata.create_all(engine)
@@ -14,14 +14,15 @@ def main():
     student_repository = StudentRepository(engine)
     subject_repository = SubjectRepository(engine)
     adviser_repository = AdviserRepository(engine)
-
     theme_repository = ThemeRepository(engine)
     theme_subject_importance_repository = ThemeSubjectImportanceRepository(engine, theme_repository, subject_repository)
     student_subject_grade_repository = StudentSubjectGradeRepository(engine, student_repository, subject_repository)
     student_theme_interest_repository = StudentThemeInterestRepository(engine, student_repository, theme_repository)
-    adviser_theme_repository = AdviserThemeRepository(engine,adviser_repository,theme_repository)
-    distribution_repository = DistributionRepository(engine, student_subject_grade_repository, student_theme_interest_repository,
+    adviser_theme_repository = AdviserThemeRepository(engine, adviser_repository, theme_repository)
+    distribution_algorithm_repository = DistributionAlgorithmRepository(engine, student_subject_grade_repository, student_theme_interest_repository,
                                       theme_subject_importance_repository, adviser_theme_repository)
+    distribution_repository = DistributionRepository(engine, student_subject_grade_repository, student_theme_interest_repository,
+                                      theme_subject_importance_repository, adviser_theme_repository,distribution_algorithm_repository)
 
     # Очищаем репозитории
     student_repository.delete_all(Student)
@@ -45,7 +46,6 @@ def main():
     subjects = subject_repository.get_all(Subject)
     themes = theme_repository.get_all(Theme)
 
-
     for student in students:
         for subject in subjects:
             grade = rnd.randint(3, 5)
@@ -65,6 +65,7 @@ def main():
     theme_subject_importance_repository.add_random_importances_for_themes(themes, subjects)
     student_theme_interest_repository.initialize_student_interests()
 
+    # Выводим информацию
     print("Студенты:")
     student_repository.display_all_students()
     print("\nПредметы:")
@@ -82,8 +83,25 @@ def main():
     print("\nПриоритет тем у научных руководителей:")
     adviser_theme_repository.display_all_adviser_theme_priorities()
 
-    distribution_repository.distribution_algorithm()
+    # Создаем новый алгоритм распределения и получаем его ID
+    distribution_algorithm_id = distribution_algorithm_repository.create_distribution_algorithm()
 
+    # Выполняем алгоритм распределения
+    distributions_to_add, unassigned_students = distribution_algorithm_repository.distribution_algorithm()
+
+    # Записываем распределения в DistributionRepository
+    distribution_repository.process_distributions(distributions_to_add, distribution_algorithm_id)
+
+    print("\nДанные, полученные алгоритмом распределения:")
+    with distribution_repository.Session() as session:
+        for distribution in distribution_repository.get_all_distributions():
+
+            # Форматируем вывод
+            print(f"ID Распределения: {distribution.distribution_id}, "
+                  f"ID Связи темы и важных для нее предметов: {distribution.theme_subject_importance_id}, "
+                  f"ID Связи предметов и оценок: {distribution.student_subject_grade_id}, "
+                  f"ID Связи интереса студента и темы: {distribution.student_theme_interest_id}, "
+                  f"ID Связи научного руководителя и темы: {distribution.adviser_theme_id}")
 
 if __name__ == "__main__":
     main()
