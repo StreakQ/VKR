@@ -509,7 +509,7 @@ class DistributionAlgorithmRepository(BaseRepository):
                     result.append((theme_id, student_id, suitability_score, interest_level))
 
             # Сортировка результатов
-            result.sort(key=lambda x: (-x[2], x[3], x[1], x[0]))
+            result.sort(key=lambda x: ( -x[2], x[3],  x[0], x[1]))
 
             print("\nРезультаты соответствия тем и интересов студентов:")
             for theme_id, student_id, suitability_score, interest_level in result:
@@ -612,12 +612,13 @@ class DistributionRepository(BaseRepository):
     def display_all_distributions(self):
         with self.Session() as session:
             try:
-                # Выполняем запрос к таблице Distribution
-                all_distributions = session.query(Distribution).all()
+                # Выполняем запрос к таблице Distribution с сортировкой
+                all_distributions = session.query(Distribution).order_by(Distribution.student_id).all()
+
                 if not all_distributions:
                     print("Данных нет")
+                    return  # Выход из метода, если данных нет
 
-                # Выводим данные в консоль
                 for distribution in all_distributions:
                     print(f"Студент ID: {distribution.student_id}, "
                           f"Тема ID: {distribution.theme_id}, "

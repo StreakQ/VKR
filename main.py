@@ -34,7 +34,7 @@ def main():
     distribution_repository.delete_all(Distribution)
 
     # Добавляем начальные данные
-    student_repository.add_initial_students(5)
+    student_repository.add_initial_students(15)
     subject_repository.add_initial_subjects(5)
     adviser_repository.add_initial_advisers(5)
     theme_repository.add_initial_themes(10)
@@ -79,10 +79,14 @@ def main():
     print("\nСвязь тем и научных руководителей:")
     adviser_theme_repository.display_all_adviser_theme_priorities()
 
-    distribution_algorithm_repository.assign_students_to_advisers_and_distribute()
+    unassigned_students = distribution_algorithm_repository.assign_students_to_advisers_and_distribute()
 
     print("\nИтоговые распределения")
     distribution_repository.display_all_distributions()
+    if unassigned_students:
+        print("Не назначенные студенты:")
+        for student_id in sorted(unassigned_students):
+            print(f"ID Студента: {student_id}")
 
 if __name__ == "__main__":
     main()
