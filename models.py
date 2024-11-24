@@ -47,7 +47,7 @@ class AdviserTheme(Base):
     adviser_theme_id = Column(Integer, primary_key=True)
     adviser_id = Column(Integer, ForeignKey('advisers.adviser_id'), nullable=False)
     theme_id = Column(Integer, ForeignKey('themes.theme_id'), nullable=False)
-    priority = Column(Integer, nullable=False)
+    #priority = Column(Integer, nullable=False)
 
     theme = relationship("Theme", back_populates="adviser_themes")
     adviser = relationship("Adviser", back_populates="adviser_themes")
@@ -85,29 +85,25 @@ class StudentThemeInterest(Base):
 
 class Distribution(Base):
     __tablename__ = 'distributions'
+
     distribution_id = Column(Integer, primary_key=True)
-    distribution_algorithm_id = Column(Integer, ForeignKey('distribution_algorithms.distribution_algorithm_id'),
-                                       nullable=False)
-    theme_subject_importance_id = Column(Integer, ForeignKey('theme_subject_importances.theme_subject_importance_id'),
-                                         nullable=False)
-    student_subject_grade_id = Column(Integer, ForeignKey('student_subjects_grades.student_subject_grade_id'),
-                                      nullable=False)
-    student_theme_interest_id = Column(Integer, ForeignKey('student_theme_interests.student_theme_interest_id'),
-                                       nullable=False)
-    adviser_theme_id = Column(Integer, ForeignKey('adviser_themes.adviser_theme_id'), nullable=False)
+    student_id  = Column(Integer)
+    theme_id  = Column(Integer)
+    adviser_id  = Column(Integer)
 
-
-    theme_subject_importance = relationship("ThemeSubjectImportance")
-    student_grade_record = relationship("StudentSubjectGrade")
-    student_theme_interest = relationship("StudentThemeInterest")
-    adviser_theme = relationship("AdviserTheme")
-
-    distribution_algorithm = relationship("DistributionAlgorithm", back_populates="distributions")
+    #distribution_algorithm = relationship("DistributionAlgorithm", back_populates="distributions")
 
 
 class DistributionAlgorithm(Base):
     __tablename__ = 'distribution_algorithms'
 
     distribution_algorithm_id = Column(Integer, primary_key=True)
+    theme_subject_importance_id = Column(Integer, ForeignKey('theme_subject_importances.theme_subject_importance_id'), nullable=False)
+    student_subject_grade_id = Column(Integer, ForeignKey('student_subjects_grades.student_subject_grade_id'),nullable=False)
+    student_theme_interest_id = Column(Integer, ForeignKey('student_theme_interests.student_theme_interest_id'), nullable=False)
+    adviser_theme_id = Column(Integer, ForeignKey('adviser_themes.adviser_theme_id'), nullable=False)
 
-    distributions = relationship("Distribution", back_populates="distribution_algorithm")
+    theme_subject_importance = relationship("ThemeSubjectImportance")
+    student_grade_record = relationship("StudentSubjectGrade")
+    student_theme_interest = relationship("StudentThemeInterest")
+    adviser_theme = relationship("AdviserTheme")

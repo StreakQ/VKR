@@ -10,7 +10,8 @@ from repositories import (
     StudentSubjectGradeRepository,
     StudentThemeInterestRepository,
     ThemeSubjectImportanceRepository,
-    DistributionRepository, DistributionAlgorithmRepository
+    DistributionRepository,
+    DistributionAlgorithmRepository
 )
 
 class RepositoryFactory:
@@ -67,6 +68,7 @@ class RepositoryFactory:
         engine = create_engine(db_url)
         Base.metadata.create_all(engine)
         return DistributionAlgorithmRepository(engine,
+                                      distribution_repository=DistributionRepository,
                                       student_subject_grade_repository=StudentSubjectGradeRepository,
                                       student_theme_interest_repository= StudentThemeInterestRepository,
                                       theme_subject_importance_repository= ThemeSubjectImportanceRepository,
@@ -77,11 +79,5 @@ class RepositoryFactory:
     def create_distribution_repository(db_url):
         engine = create_engine(db_url)
         Base.metadata.create_all(engine)
-        return DistributionRepository(engine,
-                                      distribution_algorithm_repository=DistributionAlgorithmRepository,
-                                      student_subject_grade_repository=StudentSubjectGradeRepository,
-                                      student_theme_interest_repository=StudentThemeInterestRepository,
-                                      theme_subject_importance_repository=ThemeSubjectImportanceRepository,
-                                      adviser_theme_repository=AdviserThemeRepository
-                                      )
+        return DistributionRepository(engine)
 
