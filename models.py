@@ -90,7 +90,7 @@ class Distribution(Base):
     student_id  = Column(Integer)
     theme_id  = Column(Integer)
     adviser_id  = Column(Integer)
-
+    interest_level = Column(Integer)
     #distribution_algorithm = relationship("DistributionAlgorithm", back_populates="distributions")
 
 

@@ -20,7 +20,7 @@ def main():
     adviser_theme_repository = AdviserThemeRepository(engine, adviser_repository, theme_repository)
     distribution_repository = DistributionRepository(engine)
     distribution_algorithm_repository = DistributionAlgorithmRepository(engine, student_subject_grade_repository, student_theme_interest_repository,
-                                      theme_subject_importance_repository, adviser_theme_repository,distribution_repository)
+                                      theme_subject_importance_repository, adviser_theme_repository, distribution_repository)
 
     # Очищаем репозитории
     student_repository.delete_all(Student)
@@ -37,7 +37,7 @@ def main():
     student_repository.add_initial_students(15)
     subject_repository.add_initial_subjects(5)
     adviser_repository.add_initial_advisers(5)
-    theme_repository.add_initial_themes(10)
+    theme_repository.add_initial_themes(15)
 
     # Получаем данные из репозиториев
     students = student_repository.get_all(Student)
@@ -48,11 +48,6 @@ def main():
         for subject in subjects:
             grade = rnd.randint(3, 5)
             student_subject_grade_repository.add_student_subject_grade(student.student_id, subject.subject_id, grade)
-
-    for student in students:
-        for theme in themes:
-            interest_level = rnd.randint(1, 5)
-            student_theme_interest_repository.add_student_theme_interest(student.student_id, theme.theme_id, interest_level)
 
     for theme in themes:
         for subject in subjects:
@@ -83,10 +78,32 @@ def main():
 
     print("\nИтоговые распределения")
     distribution_repository.display_all_distributions()
+
     if unassigned_students:
         print("Не назначенные студенты:")
-        for student_id in sorted(unassigned_students):
-            print(f"ID Студента: {student_id}")
+        check_unassigned_students(unassigned_students, adviser_repository, student_theme_interest_repository,
+                                  student_repository)
+
+        # Проверка причин, почему студенты остались неназначенными
+        check_unassigned_students(unassigned_students, adviser_repository, student_theme_interest_repository,
+                                  student_repository)
+
+def check_unassigned_students(unassigned_students, adviser_repository, student_theme_interest_repository, student_repository):
+    for student_id in unassigned_students:
+        student = student_repository.get_by_student_id(student_id)  # Теперь используем метод из репозитория
+        if student:
+            print(f"Студент ID: {student.student_id}, Имя: {student.firstname} {student.lastname}")
+            selected_themes = student_theme_interest_repository.get_selected_themes_for_student(student.student_id)
+            for theme in selected_themes:
+                advisers = adviser_repository.get_advisers_for_theme(theme.theme_id)
+                if not advisers:
+                    print(f"  Нет научных советников для темы ID: {theme.theme_id}")
+                else:
+                    for adviser in advisers:
+                        if adviser.number_of_places <= 0:
+                            print(f"  У научного советника ID: {adviser.adviser_id} нет свободных мест для темы ID: {theme.theme_id}")
+                        else:
+                            print(f"  Научный советник ID: {adviser.adviser_id} доступен для темы ID: {theme.theme_id}")
 
 if __name__ == "__main__":
     main()

@@ -1,3 +1,6 @@
+from importlib.metadata import distribution
+
+from sqlalchemy import distinct
 from sqlalchemy.orm import sessionmaker
 from models import (Student, Adviser, Subject, Theme,
                     ThemeSubjectImportance, StudentSubjectGrade, StudentThemeInterest, Distribution, AdviserTheme, DistributionAlgorithm)
@@ -68,6 +71,11 @@ class StudentRepository(BaseRepository):
                 f"ID Студента: {student.student_id}, Имя: {student.firstname} {student.lastname}, "
                 f"Группа: {student.group_student}")
 
+    # Добавляем метод get_by_id
+    def get_by_student_id(self, record_id):
+        with self.Session() as session:
+            return session.query(Student).filter(Student.student_id == record_id).first()
+
 
 class AdviserRepository(BaseRepository):
     def __init__(self, engine):
@@ -99,7 +107,7 @@ class AdviserRepository(BaseRepository):
     def add_initial_advisers(self, count=5):
         for _ in range(count):
             self.add_adviser(fake.first_name_male(), fake.last_name_male(), fake.first_name_male(),
-                             fake.random_int(min=1, max=3))
+                             fake.random_int(min=5, max=10))
 
     def display_all_advisers(self):
         advisers = self.get_all(Adviser)
@@ -107,6 +115,10 @@ class AdviserRepository(BaseRepository):
             print(
                 f"ID Руководителя: {adviser.adviser_id}, Имя: {adviser.firstname} {adviser.lastname}, Мест: "
                 f"{adviser.number_of_places}")
+
+    def get_advisers_for_theme(self, theme_id):
+        with self.Session() as session:
+            return session.query(Adviser).join(AdviserTheme).filter(AdviserTheme.theme_id == theme_id).all()
 
 
 class SubjectRepository(BaseRepository):
@@ -265,8 +277,7 @@ class AdviserThemeRepository(BaseRepository):
             themes = self.theme_repository.get_all(Theme)
 
             for adviser in advisers:
-                # Случайно выбираем от 3 до 6 тем
-                num_themes = rnd.randint(3, 6)
+                num_themes = rnd.randint(5, 10)
                 selected_themes = rnd.sample(themes, min(num_themes, len(themes)))
 
                 for theme in selected_themes:
@@ -394,27 +405,39 @@ class StudentThemeInterestRepository(BaseRepository):
             session.add(new_student_theme_interest)
             session.commit()
 
+    def generate_random_interests(self):
+        with self.Session() as session:
+            # Получаем все доступные темы из базы данных
+            available_themes = session.query(Theme).all()
+
+            # Случайным образом выбираем 4 темы
+            selected_themes = rnd.sample(available_themes, 4)
+
+            # Генерируем уникальные уровни интереса от 1 до 4
+            interest_levels = [1, 2, 3, 4]
+            rnd.shuffle(interest_levels)
+
+            # Создаем список интересов
+            interests = [(theme.theme_id, level) for theme, level in zip(selected_themes, interest_levels)]
+            return interests
+
+    def initialize_student_interests(self):
+        students = self.student_repository.get_all(Student)
+        for student in students:
+            # Генерируем интересы для каждого студента
+            interests = self.generate_random_interests()
+            # Добавляем интересы к темам
+            self.add_multiple_student_theme_interests(student.student_id, interests)
+
     def add_multiple_student_theme_interests(self, student_id, interests):
         with self.Session() as session:
             try:
+
                 for theme_id, interest_level in interests:
                     self.add_student_theme_interest(student_id, theme_id, interest_level)
             except Exception as e:
                 session.rollback()
                 print(f"Ошибка при добавлении интересов: {e}")
-
-    @staticmethod
-    def generate_random_interests():
-        interest_levels = [1, 2, 3, 4, 5]
-        rnd.shuffle(interest_levels)
-        interests = [(theme_id, level) for theme_id, level in zip(range(1, 5), interest_levels[:4])]
-        return interests
-
-    def initialize_student_interests(self):
-        students = self.student_repository.get_all(Student)
-        for student in students:
-            interests = self.generate_random_interests()
-            self.add_multiple_student_theme_interests(student.student_id, interests)
 
     def display_all_student_theme_interests(self):
         student_theme_interests = self.get_all(StudentThemeInterest)
@@ -422,6 +445,11 @@ class StudentThemeInterestRepository(BaseRepository):
             print(
                 f"ID: {interest.student_theme_interest_id}, ID Студента: {interest.student_id}, "
                 f"ID Темы: {interest.theme_id}, Уровень интереса: {interest.interest_level}")
+
+    def get_selected_themes_for_student(self, student_id):
+        with self.Session() as session:
+            return session.query(Theme).join(StudentThemeInterest).filter(
+                StudentThemeInterest.student_id == student_id).all()
 
 
 class DistributionAlgorithmRepository(BaseRepository):
@@ -522,7 +550,8 @@ class DistributionAlgorithmRepository(BaseRepository):
     def assign_students_to_advisers_and_distribute(self):
         # Получаем результаты соответствия тем и интересов студентов
         suitability_results = self.link_weighted_grades_with_interest()
-        sorted_results = sorted(suitability_results, key=lambda x: (x[3], -x[2], x[0]))
+        sorted_results = sorted(suitability_results, key=lambda x: (
+        x[3], -x[2], x[0]))  # Сортировка по интересу, затем по степени соответствия
 
         unassigned_students = set()
         assigned_students = set()
@@ -545,7 +574,7 @@ class DistributionAlgorithmRepository(BaseRepository):
                 ).first()
 
                 if not student_interest:
-                    continue  # Пропустить, если нет записи об интересе
+                    continue
 
                 available_advisers = [
                     adviser for adviser in advisers.values()
@@ -561,15 +590,13 @@ class DistributionAlgorithmRepository(BaseRepository):
 
                     # Выбираем научного руководителя с наибольшим количеством свободных мест
                     adviser = available_advisers[0]
-                    logging.info(
-                        f"Доступные научные руководители для темы ID {theme_id}: {[adviser.adviser_id for adviser in available_advisers]}")
 
                     # Создаем запись о распределении
                     distribution_entry = {
                         "theme_id": theme_id,
                         "student_id": student_id,
-                        "adviser_id": next((adviser_theme.theme_id for adviser_theme in adviser_themes if
-                                                  adviser_theme.adviser_id == adviser.adviser_id), None)
+                        "adviser_id": adviser.adviser_id,
+                        "interest_level": interest_level
                     }
 
                     distributions_to_add.append(distribution_entry)
@@ -580,11 +607,52 @@ class DistributionAlgorithmRepository(BaseRepository):
                     assigned_students.add(student_id)
                     assigned_themes.add(theme_id)
 
-                    logging.info(
-                        f"Студент ID {student_id} назначен на тему ID {theme_id} к научному руководителю ID {adviser.adviser_id}.")
-
                 else:
-                    unassigned_students.add(student_id)
+                    # Если нет доступных научных советников, то пробуем назначить к другим темам с меньшим уровнем интереса
+                    for new_interest_level in range(interest_level - 1, 0, -1):
+                        alternative_themes = [
+                            interest.theme_id for interest in session.query(StudentThemeInterest).filter(
+                                StudentThemeInterest.student_id == student_id,
+                                StudentThemeInterest.interest_level == new_interest_level
+                            ).all()
+                        ]
+
+                        for new_theme_id in alternative_themes:
+                            available_advisers = [
+                                adviser for adviser in advisers.values()
+                                if adviser.number_of_places > 0 and
+                                   adviser_assignments[adviser.adviser_id] < adviser.number_of_places and
+                                   any(adviser_theme.theme_id == new_theme_id for adviser_theme in adviser_themes if
+                                       adviser_theme.adviser_id == adviser.adviser_id)
+                            ]
+
+                            if available_advisers:
+                                # Сортируем доступных научных руководителей по количеству свободных мест (по убыванию)
+                                available_advisers.sort(key=lambda x: x.number_of_places, reverse=True)
+
+                                # Выбираем научного руководителя с наибольшим количеством свободных мест
+                                adviser = available_advisers[0]
+
+                                # Создаем запись о распределении
+                                distribution_entry = {
+                                    "theme_id": theme_id,
+                                    "student_id": student_id,
+                                    "adviser_id": adviser.adviser_id,
+                                    "interest_level": interest_level
+                                }
+
+                                distributions_to_add.append(distribution_entry)
+
+                                # Уменьшаем количество мест и увеличиваем количество назначенных
+                                adviser.number_of_places -= 1
+                                adviser_assignments[adviser.adviser_id] += 1
+                                assigned_students.add(student_id)
+                                assigned_themes.add(new_theme_id)
+                                break  # Прерываем цикл, если студент был назначен
+
+                    # Если студент все еще не назначен, добавляем его в список неназначенных
+                    if student_id not in assigned_students:
+                        unassigned_students.add(student_id)
 
         # Записываем распределения в DistributionRepository
         self.distribution_repository.add_distribution(distributions_to_add)
@@ -601,7 +669,8 @@ class DistributionRepository(BaseRepository):
                     new_distribution = Distribution(
                         student_id=distribution["student_id"],
                         theme_id=distribution["theme_id"],
-                        adviser_id=distribution["adviser_id"]
+                        adviser_id=distribution["adviser_id"],
+                        interest_level = distribution["interest_level"]
                     )
                     session.add(new_distribution)
                 session.commit()
@@ -622,6 +691,7 @@ class DistributionRepository(BaseRepository):
                 for distribution in all_distributions:
                     print(f"Студент ID: {distribution.student_id}, "
                           f"Тема ID: {distribution.theme_id}, "
-                          f"Научный руководитель ID: {distribution.adviser_id}")
+                          f"Научный руководитель ID: {distribution.adviser_id}"
+                          f" Уровень интереса {distribution.interest_level}")
             except Exception as e:
                 logging.error(f"Ошибка при получении распределений: {e}")
