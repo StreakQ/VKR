@@ -36,7 +36,7 @@ def main():
     # Добавляем начальные данные
     student_repository.add_initial_students(15)
     subject_repository.add_initial_subjects(5)
-    adviser_repository.add_initial_advisers(5)
+    adviser_repository.add_initial_advisers(4)
     theme_repository.add_initial_themes(15)
 
     # Получаем данные из репозиториев
@@ -79,21 +79,29 @@ def main():
     print("\nИтоговые распределения")
     distribution_repository.display_all_distributions()
 
+    print()
     if unassigned_students:
         print("Не назначенные студенты:")
         check_unassigned_students(unassigned_students, adviser_repository, student_theme_interest_repository,
                                   student_repository)
 
-        # Проверка причин, почему студенты остались неназначенными
-        check_unassigned_students(unassigned_students, adviser_repository, student_theme_interest_repository,
-                                  student_repository)
 
 def check_unassigned_students(unassigned_students, adviser_repository, student_theme_interest_repository, student_repository):
     for student_id in unassigned_students:
-        student = student_repository.get_by_student_id(student_id)  # Теперь используем метод из репозитория
+        student = student_repository.get_by_student_id(student_id)
         if student:
-            print(f"Студент ID: {student.student_id}, Имя: {student.firstname} {student.lastname}")
+            print(f"\nСтудент ID: {student.student_id}, Имя: {student.firstname} {student.lastname}")
+
+            # Получаем темы, к которым у студента есть интересы
             selected_themes = student_theme_interest_repository.get_selected_themes_for_student(student.student_id)
+            if selected_themes:
+                print("  Темы интересов:")
+                for theme in selected_themes:
+                    print(f"    - Тема ID: {theme.theme_id}, Название: {theme.theme_name}")
+            else:
+                print("  У студента нет тем интересов.")
+
+            # Проверяем наличие научных советников для выбранных тем
             for theme in selected_themes:
                 advisers = adviser_repository.get_advisers_for_theme(theme.theme_id)
                 if not advisers:

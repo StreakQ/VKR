@@ -71,7 +71,7 @@ class StudentRepository(BaseRepository):
                 f"ID Студента: {student.student_id}, Имя: {student.firstname} {student.lastname}, "
                 f"Группа: {student.group_student}")
 
-    # Добавляем метод get_by_id
+
     def get_by_student_id(self, record_id):
         with self.Session() as session:
             return session.query(Student).filter(Student.student_id == record_id).first()
@@ -551,7 +551,7 @@ class DistributionAlgorithmRepository(BaseRepository):
         # Получаем результаты соответствия тем и интересов студентов
         suitability_results = self.link_weighted_grades_with_interest()
         sorted_results = sorted(suitability_results, key=lambda x: (
-        x[3], -x[2], x[0]))  # Сортировка по интересу, затем по степени соответствия
+            x[3], -x[2], x[0]))  # Сортировка по интересу, затем по степени соответствия
 
         unassigned_students = set()
         assigned_students = set()
@@ -576,40 +576,14 @@ class DistributionAlgorithmRepository(BaseRepository):
                 if not student_interest:
                     continue
 
-                available_advisers = [
-                    adviser for adviser in advisers.values()
-                    if adviser.number_of_places > 0 and
-                       adviser_assignments[adviser.adviser_id] < adviser.number_of_places and
-                       any(adviser_theme.theme_id == theme_id for adviser_theme in adviser_themes if
-                           adviser_theme.adviser_id == adviser.adviser_id)
-                ]
-
-                if available_advisers:
-                    # Сортируем доступных научных руководителей по количеству свободных мест (по убыванию)
-                    available_advisers.sort(key=lambda x: x.number_of_places, reverse=True)
-
-                    # Выбираем научного руководителя с наибольшим количеством свободных мест
-                    adviser = available_advisers[0]
-
-                    # Создаем запись о распределении
-                    distribution_entry = {
-                        "theme_id": theme_id,
-                        "student_id": student_id,
-                        "adviser_id": adviser.adviser_id,
-                        "interest_level": interest_level
-                    }
-
-                    distributions_to_add.append(distribution_entry)
-
-                    # Уменьшаем количество мест и увеличиваем количество назначенных
-                    adviser.number_of_places -= 1
-                    adviser_assignments[adviser.adviser_id] += 1
+                # Попытка назначить студента к научному руководителю с текущим уровнем интереса
+                if self.assign_student_to_adviser(student_id, theme_id, interest_level, advisers, adviser_themes,
+                                                  adviser_assignments, distributions_to_add):
                     assigned_students.add(student_id)
                     assigned_themes.add(theme_id)
-
                 else:
-                    # Если нет доступных научных советников, то пробуем назначить к другим темам с меньшим уровнем интереса
-                    for new_interest_level in range(interest_level - 1, 0, -1):
+                    # Если нет доступных научных советников, пробуем назначить к другим темам с меньшим уровнем интереса
+                    for new_interest_level in range(interest_level + 1, 5):
                         alternative_themes = [
                             interest.theme_id for interest in session.query(StudentThemeInterest).filter(
                                 StudentThemeInterest.student_id == student_id,
@@ -618,34 +592,9 @@ class DistributionAlgorithmRepository(BaseRepository):
                         ]
 
                         for new_theme_id in alternative_themes:
-                            available_advisers = [
-                                adviser for adviser in advisers.values()
-                                if adviser.number_of_places > 0 and
-                                   adviser_assignments[adviser.adviser_id] < adviser.number_of_places and
-                                   any(adviser_theme.theme_id == new_theme_id for adviser_theme in adviser_themes if
-                                       adviser_theme.adviser_id == adviser.adviser_id)
-                            ]
-
-                            if available_advisers:
-                                # Сортируем доступных научных руководителей по количеству свободных мест (по убыванию)
-                                available_advisers.sort(key=lambda x: x.number_of_places, reverse=True)
-
-                                # Выбираем научного руководителя с наибольшим количеством свободных мест
-                                adviser = available_advisers[0]
-
-                                # Создаем запись о распределении
-                                distribution_entry = {
-                                    "theme_id": theme_id,
-                                    "student_id": student_id,
-                                    "adviser_id": adviser.adviser_id,
-                                    "interest_level": interest_level
-                                }
-
-                                distributions_to_add.append(distribution_entry)
-
-                                # Уменьшаем количество мест и увеличиваем количество назначенных
-                                adviser.number_of_places -= 1
-                                adviser_assignments[adviser.adviser_id] += 1
+                            if self.assign_student_to_adviser(student_id, new_theme_id, new_interest_level, advisers,
+                                                              adviser_themes, adviser_assignments,
+                                                              distributions_to_add):
                                 assigned_students.add(student_id)
                                 assigned_themes.add(new_theme_id)
                                 break  # Прерываем цикл, если студент был назначен
@@ -658,6 +607,41 @@ class DistributionAlgorithmRepository(BaseRepository):
         self.distribution_repository.add_distribution(distributions_to_add)
 
         return unassigned_students
+
+    def assign_student_to_adviser(self, student_id, theme_id, interest_level, advisers, adviser_themes,
+                                  adviser_assignments, distributions_to_add):
+        available_advisers = [
+            adviser for adviser in advisers.values()
+            if adviser.number_of_places > 0 and
+               adviser_assignments[adviser.adviser_id] < adviser.number_of_places and
+               any(adviser_theme.theme_id == theme_id for adviser_theme in adviser_themes if
+                   adviser_theme.adviser_id == adviser.adviser_id)
+        ]
+
+        if available_advisers:
+            # Сортируем доступных научных руководителей по количеству свободных мест (по убыванию)
+            available_advisers.sort(key=lambda x: x.number_of_places, reverse=True)
+
+            # Выбираем научного руководителя с наибольшим количеством свободных мест
+            adviser = available_advisers[0]
+
+            # Создаем запись о распределении
+            distribution_entry = {
+                "theme_id": theme_id,
+                "student_id": student_id,
+                "adviser_id": adviser.adviser_id,
+                "interest_level": interest_level
+            }
+
+            distributions_to_add.append(distribution_entry)
+
+            # Уменьшаем количество мест и увеличиваем количество назначенных
+            adviser.number_of_places -= 1
+            adviser_assignments[adviser.adviser_id] += 1
+
+            return True  # Студент успешно назначен
+
+        return False  # Не удалось назначить студента
 
 
 class DistributionRepository(BaseRepository):
