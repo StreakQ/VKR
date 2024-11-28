@@ -107,7 +107,7 @@ def main():
 
 def check_unassigned_students(unassigned_students, adviser_repository, student_theme_interest_repository, student_repository):
     for student_id in unassigned_students:
-        student = student_repository.get_by_id(Student,student_id,id_field=student_id)
+        student = student_repository.get_by_id(Student,student_id,id_field='student_id')
         if student:
             print(f"\nСтудент ID: {student.student_id}, Имя: {student.firstname} {student.lastname}")
 
