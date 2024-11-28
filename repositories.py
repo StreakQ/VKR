@@ -18,9 +18,9 @@ class BaseRepository:
         with self.Session() as session:
             return session.query(model).all()
 
-    def get_by_id(self, model, record_id):
+    def get_by_id(self, model, record_id, id_field='model_id'):
         with self.Session() as session:
-            return session.query(model).filter(model.id == record_id).first()
+            return session.query(model).filter(getattr(model, id_field) == record_id).first()
 
     def delete_all(self, model):
         with self.Session() as session:
@@ -644,3 +644,7 @@ class DistributionRepository(BaseRepository):
                           f" Уровень интереса {distribution.interest_level}")
             except Exception as e:
                 logging.error(f"Ошибка при получении распределений: {e}")
+
+    def update_distribution(self,distribution_id,student_id,theme_id, adviser_id):
+        with self.Session() as session:
+            distribution_record = self.get_by_id(Distribution, distribution_id)
