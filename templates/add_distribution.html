@@ -2,9 +2,26 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Title</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Добавить распределение</title>
 </head>
 <body>
-
+    <h1>Добавить распределение</h1>
+    <form method="POST">
+        <label for="student_id">ID Студента:</label>
+        <input type="text" id="student_id" name="student_id" required>
+        <br>
+        <label for="theme_id">ID Темы:</label>
+        <input type="text" id="theme_id" name="theme_id" required>
+        <br>
+        <label for="adviser_id">ID Руководителя:</label>
+        <input type="text" id="adviser_id" name="adviser_id" required>
+        <br>
+        <label for="interest_level">Уровень интереса:</label>
+        <input type="text" id="interest_level" name="interest_level" required>
+        <br>
+        <button type="submit">Добавить</button>
+    </form>
+    <a href="{{ url_for('index') }}">Назад</a>
 </body>
 </html>

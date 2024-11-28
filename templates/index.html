@@ -2,9 +2,34 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Title</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Распределения</title>
 </head>
 <body>
-
+    <h1>Список распределений</h1>
+    <a href="{{ url_for('add_distribution') }}">Добавить распределение</a>
+    <a href="{{ url_for('upload') }}">Загрузить данные из Excel</a>
+    <table>
+        <tr>
+            <th>ID</th>
+            <th>ID Студента</th>
+            <th>ID Темы</th>
+            <th>ID Руководителя</th>
+            <th>Уровень интереса</th>
+            <th>Действия</th>
+        </tr>
+        {% for distribution in distributions %}
+        <tr>
+            <td>{{ distribution.id }}</td>
+            <td>{{ distribution.student_id }}</td>
+            <td>{{ distribution.theme_id }}</td>
+            <td>{{ distribution.adviser_id }}</td>
+            <td>{{ distribution.interest_level }}</td>
+            <td>
+                <a href="{{ url_for('update_distribution', distribution_id=distribution.id) }}">Изменить</a>
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
 </body>
 </html>

@@ -2,9 +2,17 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Title</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Загрузить данные из Excel</title>
 </head>
 <body>
-
+    <h1>Загрузить данные из Excel</h1>
+    <form method="POST" enctype="multipart/form-data">
+        <label for="file">Выберите файл:</label>
+        <input type="file" id="file" name="file" accept=".xlsx" required>
+        <br>
+        <button type="submit">Загрузить</button>
+    </form>
+    <a href="{{ url_for('index') }}">Назад</a>
 </body>
 </html>

@@ -606,6 +606,9 @@ class DistributionAlgorithmRepository(BaseRepository):
         return False
 
 class DistributionRepository(BaseRepository):
+    def __init__(self, engine):
+        super().__init__(engine)
+        self.Session = sessionmaker(bind=engine)
 
     def add_distribution(self, distributions):
         with self.Session() as session:
@@ -623,8 +626,11 @@ class DistributionRepository(BaseRepository):
                 session.rollback()
                 logging.error(f"Ошибка при добавлении распределений: {e}")
 
-    def add_distribution_for_app(self,stu):
-        pass
+    def add_distribution_for_app(self,student_id, theme_id, adviser_id):
+        with self.Session() as session:
+            new_distribution = Distribution(student_id=student_id,theme_id=theme_id,adviser_id=adviser_id)
+            session.add(new_distribution)
+            session.commit()
 
     def display_all_distributions(self):
         with self.Session() as session:
