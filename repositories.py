@@ -355,11 +355,11 @@ class StudentThemeInterestRepository(BaseRepository):
             # Получаем все доступные темы из базы данных
             available_themes = session.query(Theme).all()
 
-            # Случайным образом выбираем 4 темы
-            selected_themes = rnd.sample(available_themes, 4)
+            # Случайным образом выбираем 5 тем
+            selected_themes = rnd.sample(available_themes, 5)
 
-            # Генерируем уникальные уровни интереса от 1 до 4
-            interest_levels = [1, 2, 3, 4]
+            # Генерируем уникальные уровни интереса от 1 до 5
+            interest_levels = [1, 2, 3, 4, 5]
             rnd.shuffle(interest_levels)
 
             # Создаем список интересов
@@ -500,18 +500,24 @@ class DistributionAlgorithmRepository(BaseRepository):
 
         unassigned_students = set()
         assigned_students = set()
-        assigned_themes = set()
         distributions_to_add = []
 
         with self.student_theme_interest_repository.Session() as session:
             advisers = {adviser.adviser_id: adviser for adviser in session.query(Adviser).all()}
-            adviser_themes = session.query(AdviserTheme).all()
-
             adviser_assignments = {adviser.adviser_id: 0 for adviser in advisers.values()}
 
+            # Получаем темы, связанные с научными руководителями
+            adviser_themes = {}
+            for adviser in advisers.values():
+                adviser_themes[adviser.adviser_id] = [
+                    adviser_theme.theme_id for adviser_theme in session.query(AdviserTheme).filter(
+                        AdviserTheme.adviser_id == adviser.adviser_id).all()
+                ]
+
             for theme_id, student_id, total_weighted_grade, interest_level in sorted_results:
-                if student_id in assigned_students or theme_id in assigned_themes:
-                    continue  # Пропустить, если уже назначен
+                # Пропустить, если студент уже назначен
+                if student_id in assigned_students:
+                    continue
 
                 student_interest = session.query(StudentThemeInterest).filter(
                     StudentThemeInterest.student_id == student_id,
@@ -522,13 +528,12 @@ class DistributionAlgorithmRepository(BaseRepository):
                     continue
 
                 # Попытка назначить студента к научному руководителю с текущим уровнем интереса
-                if self.assign_student_to_adviser(student_id, theme_id, interest_level, advisers, adviser_themes,
-                                                  adviser_assignments, distributions_to_add):
-                    assigned_students.add(student_id)
-                    assigned_themes.add(theme_id)
+                if self.assign_student_to_adviser(student_id, theme_id, interest_level, advisers,
+                                                  adviser_themes, adviser_assignments, distributions_to_add):
+                    assigned_students.add(student_id)  # Добавляем студента в список назначенных
                 else:
                     # Если нет доступных научных советников, пробуем назначить к другим темам с меньшим уровнем интереса
-                    for new_interest_level in range(interest_level + 1, 5):
+                    for new_interest_level in range(interest_level + 1, 6):
                         alternative_themes = [
                             interest.theme_id for interest in session.query(StudentThemeInterest).filter(
                                 StudentThemeInterest.student_id == student_id,
@@ -537,14 +542,14 @@ class DistributionAlgorithmRepository(BaseRepository):
                         ]
 
                         for new_theme_id in alternative_themes:
-                            if new_theme_id in assigned_themes:
-                                continue  # Пропустить, если тема уже назначена
+                            # Проверяем, был ли студент уже назначен
+                            if student_id in assigned_students:
+                                break  # Прерываем цикл, если студент был назначен
 
                             if self.assign_student_to_adviser(student_id, new_theme_id, new_interest_level, advisers,
                                                               adviser_themes, adviser_assignments,
                                                               distributions_to_add):
                                 assigned_students.add(student_id)
-                                assigned_themes.add(new_theme_id)
                                 break  # Прерываем цикл, если студент был назначен
 
                     # Если студент все еще не назначен, добавляем его в список неназначенных
@@ -553,6 +558,12 @@ class DistributionAlgorithmRepository(BaseRepository):
 
         # Записываем распределения в DistributionRepository
         self.distribution_repository.add_distribution(distributions_to_add)
+
+        # Проверяем неназначенных студентов без создания нового метода
+        all_students = session.query(Student).all()  # Получаем всех студентов
+        for student in all_students:
+            if student.student_id not in assigned_students:
+                unassigned_students.add(student.student_id)  # Добавляем ID неназначенного студента
 
         return unassigned_students
 
@@ -564,8 +575,7 @@ class DistributionAlgorithmRepository(BaseRepository):
             if adviser.number_of_places > 0 and  # Проверяем, есть ли свободные места
                adviser_assignments[
                    adviser.adviser_id] < adviser.number_of_places and  # Проверяем, не превышено ли количество назначений
-               any(adviser_theme.theme_id == theme_id for adviser_theme in adviser_themes if
-                   adviser_theme.adviser_id == adviser.adviser_id)  # Проверяем, привязан ли научный руководитель к теме
+               theme_id in adviser_themes[adviser.adviser_id]  # Проверяем, привязан ли научный руководитель к теме
         ]
 
         if available_advisers:
@@ -594,7 +604,6 @@ class DistributionAlgorithmRepository(BaseRepository):
 
         return False  # Не удалось назначить студента
 
-
 class DistributionRepository(BaseRepository):
 
     def add_distribution(self, distributions):
@@ -617,7 +626,9 @@ class DistributionRepository(BaseRepository):
         with self.Session() as session:
             try:
                 # Выполняем запрос к таблице Distribution с сортировкой
-                all_distributions = session.query(Distribution).order_by(Distribution.distribution_id).all()
+                #all_distributions = session.query(Distribution).order_by(Distribution.distribution_id).all()
+                all_distributions = session.query(Distribution).order_by(Distribution.student_id).all()
+
 
                 if not all_distributions:
                     print("Данных нет")
