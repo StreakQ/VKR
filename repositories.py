@@ -530,7 +530,9 @@ class DistributionAlgorithmRepository(BaseRepository):
                 # Попытка назначить студента к научному руководителю с текущим уровнем интереса
                 if self.assign_student_to_adviser(student_id, theme_id, interest_level, advisers,
                                                   adviser_themes, adviser_assignments, distributions_to_add):
-                    assigned_students.add(student_id)  # Добавляем студента в список назначенных
+                    assigned_students.add(student_id)
+
+                    # Добавляем студента в список назначенных
                 else:
                     # Если нет доступных научных советников, пробуем назначить к другим темам с меньшим уровнем интереса
                     for new_interest_level in range(interest_level + 1, 6):
@@ -594,11 +596,12 @@ class DistributionAlgorithmRepository(BaseRepository):
             }
 
             distributions_to_add.append(distribution_entry)  # Добавляем запись о распределении в список
-
             # Уменьшаем количество мест у научного руководителя и увеличиваем количество назначенных студентов
             adviser.number_of_places -= 1  # Уменьшаем количество свободных мест
             adviser_assignments[
                 adviser.adviser_id] += 1  # Увеличиваем счетчик назначенных студентов для данного научного руководителя
+            print(f"adviser_id {adviser.adviser_id}, места: {adviser.number_of_places}")
+
 
             return True  # Студент успешно назначен
 
