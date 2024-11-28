@@ -34,7 +34,7 @@ def main():
     distribution_repository.delete_all(Distribution)
 
     # Добавляем начальные данные
-    student_repository.add_initial_students(30)
+    student_repository.add_initial_students(50)
     subject_repository.add_initial_subjects()
     adviser_repository.add_initial_advisers()
     theme_repository.add_initial_themes()
@@ -102,6 +102,8 @@ def main():
         check_unassigned_students(unassigned_students, adviser_repository, student_theme_interest_repository,
                                   student_repository)
 
+    print("\nОставшиеся места после распределения")
+    adviser_repository.display_all_advisers()
 
 def check_unassigned_students(unassigned_students, adviser_repository, student_theme_interest_repository, student_repository):
     for student_id in unassigned_students:
