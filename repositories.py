@@ -7,7 +7,7 @@ from models import (Student, Adviser, Subject, Theme,
 from faker import Faker
 import random as rnd
 import logging
-
+from data import *
 fake = Faker('ru_RU')
 
 class BaseRepository:
@@ -104,16 +104,15 @@ class AdviserRepository(BaseRepository):
                 session.delete(adviser_record)
                 session.commit()
 
-    def add_initial_advisers(self, count=5):
-        for _ in range(count):
-            self.add_adviser(fake.first_name_male(), fake.last_name_male(), fake.first_name_male(),
-                             fake.random_int(min=5, max=10))
+    def add_initial_advisers(self):
+        for firstname, lastname, patronymic, number_of_places in advisers_data:
+            self.add_adviser(firstname, lastname, patronymic, number_of_places)
 
     def display_all_advisers(self):
         advisers = self.get_all(Adviser)
         for adviser in advisers:
             print(
-                f"ID Руководителя: {adviser.adviser_id}, Имя: {adviser.firstname} {adviser.lastname}, Мест: "
+                f"ID Руководителя: {adviser.adviser_id}, Имя: {adviser.firstname} {adviser.lastname} {adviser.patronymic}, Мест: "
                 f"{adviser.number_of_places}")
 
     def get_advisers_for_theme(self, theme_id):
@@ -145,32 +144,9 @@ class SubjectRepository(BaseRepository):
                 session.delete(subject)
                 session.commit()
 
-    def add_initial_subjects(self, count=5):
-        subjects_list = [
-            "Алгебра и аналитическая геометрия",
-            "Математический анализ",
-            "Математический анализ, часть 2 ",
-            "Программирование и основы алгоритмизации",
-            "Физика ",
-            "Разработка программного обеспечения систем управления",
-            "Вычислительные методы",
-            "Статистические методы в инженерных исследованиях",
-            "Электротехника ",
-            "Методы оптимизации",
-            "Информационные технологии ",
-            "Программное обеспечение автоматизированных систем",
-            "Элементы и системы пневмоавтоматики",
-            "Интеллектуальный анализ данных",
-            "Функциональные узлы и схемотехника систем управления и вычислительных машин",
-            "Системное программное обеспечение",
-            "Элементы и системы гидроавтоматики",
-            "Нейрокомпьютеры и их применение"
-        ]
-
-        available_subjects = subjects_list.copy()
-        count = min(count, len(available_subjects))
-
-        for _ in range(count):
+    def add_initial_subjects(self):
+        available_subjects = subjects_data.copy()
+        for _ in range(len(available_subjects)):
             selected_subject = rnd.choice(available_subjects)
             self.add_subject(selected_subject)
             available_subjects.remove(selected_subject)
@@ -205,40 +181,9 @@ class ThemeRepository(BaseRepository):
                 session.delete(theme_record)
                 session.commit()
 
-    def add_initial_themes(self, count=5):
-        themes = [
-            "Разработка методов декомпозиции сложных моделей многотемповых динамических систем",
-            "Исследование и разработка алгоритмов управления сложными динамическими объектами",
-            "Структурная и параметрическая идентификация динамических объектов",
-            "Разработка методов нечеткой логики и нейро-нечетких алгоритмов диагностики динамических объектов и управления ими",
-            "Робототехнические системы, нейро-нечеткие алгоритмы управления",
-            "Разработка систем компьютерного зрения при управлении динамическими объектами",
-            "Разработка учебно-исследовательских лабораторных комплексов по дисциплинам кафедры на базе стандартных программных средств",
-            "Микропроцессорные и аппаратно-технические средства систем управления и автоматизации",
-            "Автоматизация технологических процессов",
-            "Нейросетевые системы управления и их применение",
-            "Машинное обучение и интеллектуальный анализ данных",
-            "Нейросетевые методы обработки данных",
-            "Методы распознавания образов, текста и речи",
-            "Анализ стохастических процессов, разработка методов прогнозирования стационарных и нестационарных временных рядов",
-            "Методы, модели и методики обеспечения информационной безопасности компьютерных систем",
-            "Разработка информационных систем с использованием баз данных",
-            "Методы и программные средства анализа данных при поддержке принятия решений",
-            "Разработка систем диспетчеризации (SCADA-системы)",
-            "Разработка цифровых систем на основе ЭВМ для сбора и обработки данных",
-            "Разработка систем автоматизации на основе одноплатных ЭВМ"
-        ]
-
-        # Создаем копию списка тем, чтобы не изменять оригинал
-        available_themes = themes.copy()
-
-        # Убедимся, что count не превышает количество доступных тем
-        count = min(count, len(available_themes))
-
-        for _ in range(count):
-            selected_theme = rnd.choice(available_themes)
-            self.add_theme(selected_theme)
-            available_themes.remove(selected_theme)
+    def add_initial_themes(self):
+        for i in range(len(themes_data)):
+            self.add_theme(themes_data[i])
 
     def display_all_themes(self):
         themes = self.get_all(Theme)
@@ -253,7 +198,7 @@ class AdviserThemeRepository(BaseRepository):
         self.adviser_repository = adviser_repository
         self.theme_repository = theme_repository
 
-    def delete_adviser_theme_priority(self, adviser_id, theme_id):
+    def delete_adviser_theme(self, adviser_id, theme_id):
         with self.Session() as session:
             delete_adviser_theme_priority = session.query(AdviserTheme).filter(
                 AdviserTheme.adviser_id == adviser_id,
@@ -263,40 +208,27 @@ class AdviserThemeRepository(BaseRepository):
                 session.delete(delete_adviser_theme_priority)
                 session.commit()
 
-    def display_all_adviser_theme_priorities(self):
-        adviser_theme_priorities = self.get_all(AdviserTheme)
-        for priority in adviser_theme_priorities:
+    def display_all_adviser_themes(self):
+        adviser_themes = self.get_all(AdviserTheme)
+        for adviser_theme in adviser_themes:
             print(
-                f"ID: {priority.adviser_theme_id}, ID Научного руководителя: {priority.adviser_id}, "
-                f"ID Темы: {priority.theme_id}"
+                f"ID: {adviser_theme.adviser_theme_id}, ID Научного руководителя: {adviser_theme.adviser_id}, "
+                f"ID Темы: {adviser_theme.theme_id}"
             )
 
-    def assign_random_themes_to_advisers(self):
-        with self.Session() as session:
-            advisers = self.adviser_repository.get_all(Adviser)
-            themes = self.theme_repository.get_all(Theme)
-
-            for adviser in advisers:
-                num_themes = rnd.randint(5, 10)
-                selected_themes = rnd.sample(themes, min(num_themes, len(themes)))
-
-                for theme in selected_themes:
-                    self.add_adviser_theme_priority(adviser.adviser_id, theme.theme_id)
-
-    def add_adviser_theme_priority(self, adviser_id, *theme_ids):
+    def add_adviser_themes(self, adviser_id, *theme_ids):
         with self.Session() as session:
             for theme_id in theme_ids:
-                new_adviser_theme_priority = AdviserTheme(adviser_id=adviser_id, theme_id=theme_id)
-                session.add(new_adviser_theme_priority)
+                new_adviser_theme = AdviserTheme(adviser_id=adviser_id, theme_id=theme_id)
+                session.add(new_adviser_theme)
             session.commit()
 
     def update_adviser_themes(self, adviser_id, *new_theme_ids):
         with self.Session() as session:
             # Сначала удаляем все старые темы
             session.query(AdviserTheme).filter(AdviserTheme.adviser_id == adviser_id).delete()
+            self.add_adviser_themes(adviser_id, *new_theme_ids)
 
-            # Добавляем новые темы
-            self.add_adviser_theme_priority(adviser_id, *new_theme_ids)
 
 
 class ThemeSubjectImportanceRepository(BaseRepository):
@@ -335,13 +267,24 @@ class ThemeSubjectImportanceRepository(BaseRepository):
                 f"{importance.subject_id}, Вес: {round(importance.weight, 2)}")
 
     def add_random_importances_for_themes(self, themes, subjects, min_count=3, max_count=5):
-        with self.Session() as session:
-            try:
-                for theme in themes:
+        for theme in themes:
+            with self.Session() as delete_session:
+                try:
+                    # Удаляем существующие записи для данной темы
+                    delete_session.query(ThemeSubjectImportance).filter(
+                        ThemeSubjectImportance.theme_id == theme.theme_id).delete()
+                    delete_session.commit()  # Коммитим изменения
+                except Exception as e:
+                    delete_session.rollback()
+                    print(f"Ошибка при удалении: {e}")
+                    continue  # Переходим к следующей теме
+
+            with self.Session() as add_session:
+                try:
                     subject_count = rnd.randint(min_count, max_count)
+                    subject_count = min(subject_count, len(subjects))
                     selected_subjects = rnd.sample(subjects, subject_count)
 
-                    # Генерируем случайные веса
                     weights = [rnd.uniform(0.1, 1.0) for _ in selected_subjects]
                     total_weight = sum(weights)
 
@@ -353,9 +296,11 @@ class ThemeSubjectImportanceRepository(BaseRepository):
 
                     for subject, normalized_weight in zip(selected_subjects, normalized_weights):
                         self.add_theme_subject_importance(theme.theme_id, subject.subject_id, normalized_weight)
-            except Exception as e:
-                session.rollback()
-                print(e)
+
+                    add_session.commit()  # Коммитим изменения
+                except Exception as e:
+                    add_session.rollback()
+                    print(f"Ошибка при добавлении: {e}")
 
 class StudentSubjectGradeRepository(BaseRepository):
     def __init__(self, engine, student_repository, subject_repository):
@@ -490,10 +435,10 @@ class DistributionAlgorithmRepository(BaseRepository):
                     subject_weights[theme_id] = {}
                 subject_weights[theme_id][subject_id] = weight
 
-            print("\nВеса предметов по темам:")
-            for theme_id, subjects in subject_weights.items():
-                print(
-                    f"Тема ID: {theme_id}, Предметы и веса: { {subj_id: round(weight, 2) for subj_id, weight in subjects.items()} }")
+            # print("\nВеса предметов по темам:")
+            # for theme_id, subjects in subject_weights.items():
+            #     print(
+            #         f"Тема ID: {theme_id}, Предметы и веса: { {subj_id: round(weight, 2) for subj_id, weight in subjects.items()} }")
 
             for theme_id, subjects in subject_weights.items():
                 for subject_id, weight in subjects.items():
@@ -592,6 +537,9 @@ class DistributionAlgorithmRepository(BaseRepository):
                         ]
 
                         for new_theme_id in alternative_themes:
+                            if new_theme_id in assigned_themes:
+                                continue  # Пропустить, если тема уже назначена
+
                             if self.assign_student_to_adviser(student_id, new_theme_id, new_interest_level, advisers,
                                                               adviser_themes, adviser_assignments,
                                                               distributions_to_add):
@@ -610,12 +558,14 @@ class DistributionAlgorithmRepository(BaseRepository):
 
     def assign_student_to_adviser(self, student_id, theme_id, interest_level, advisers, adviser_themes,
                                   adviser_assignments, distributions_to_add):
+        # Находим доступных научных руководителей
         available_advisers = [
             adviser for adviser in advisers.values()
-            if adviser.number_of_places > 0 and
-               adviser_assignments[adviser.adviser_id] < adviser.number_of_places and
+            if adviser.number_of_places > 0 and  # Проверяем, есть ли свободные места
+               adviser_assignments[
+                   adviser.adviser_id] < adviser.number_of_places and  # Проверяем, не превышено ли количество назначений
                any(adviser_theme.theme_id == theme_id for adviser_theme in adviser_themes if
-                   adviser_theme.adviser_id == adviser.adviser_id)
+                   adviser_theme.adviser_id == adviser.adviser_id)  # Проверяем, привязан ли научный руководитель к теме
         ]
 
         if available_advisers:
@@ -633,11 +583,12 @@ class DistributionAlgorithmRepository(BaseRepository):
                 "interest_level": interest_level
             }
 
-            distributions_to_add.append(distribution_entry)
+            distributions_to_add.append(distribution_entry)  # Добавляем запись о распределении в список
 
-            # Уменьшаем количество мест и увеличиваем количество назначенных
-            adviser.number_of_places -= 1
-            adviser_assignments[adviser.adviser_id] += 1
+            # Уменьшаем количество мест у научного руководителя и увеличиваем количество назначенных студентов
+            adviser.number_of_places -= 1  # Уменьшаем количество свободных мест
+            adviser_assignments[
+                adviser.adviser_id] += 1  # Увеличиваем счетчик назначенных студентов для данного научного руководителя
 
             return True  # Студент успешно назначен
 
@@ -666,14 +617,15 @@ class DistributionRepository(BaseRepository):
         with self.Session() as session:
             try:
                 # Выполняем запрос к таблице Distribution с сортировкой
-                all_distributions = session.query(Distribution).order_by(Distribution.student_id).all()
+                all_distributions = session.query(Distribution).order_by(Distribution.distribution_id).all()
 
                 if not all_distributions:
                     print("Данных нет")
                     return  # Выход из метода, если данных нет
 
                 for distribution in all_distributions:
-                    print(f"Студент ID: {distribution.student_id}, "
+                    print(f"ID: {distribution.distribution_id}, "
+                          f"Студент ID: {distribution.student_id}, "
                           f"Тема ID: {distribution.theme_id}, "
                           f"Научный руководитель ID: {distribution.adviser_id}"
                           f" Уровень интереса {distribution.interest_level}")
