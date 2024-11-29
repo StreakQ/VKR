@@ -22,6 +22,7 @@ class BaseRepository:
         with self.Session() as session:
             return session.query(model).filter(getattr(model, id_field) == record_id).first()
 
+
     def delete_all(self, model):
         with self.Session() as session:
             try:
@@ -31,6 +32,8 @@ class BaseRepository:
                 session.rollback()
                 print(e)
 
+    def get_all_without_close(self, model):
+        return self.session.query(model).all()
 
 class StudentRepository(BaseRepository):
     def __init__(self, engine):

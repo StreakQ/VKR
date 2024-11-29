@@ -1,14 +1,18 @@
-
+from sqlalchemy.orm import sessionmaker, joinedload
 from flask import Flask, render_template, request, redirect, url_for
 from sqlalchemy import create_engine
 from repositories import DistributionRepository
 from models import Distribution
 import pandas as pd
+from openpyxl import Workbook
+from openpyxl.styles import Alignment
 import os
 
 app = Flask(__name__)
 
+# Создание движка и сессии
 engine = create_engine('sqlite:///database.db')
+Session = sessionmaker(bind=engine)
 distribution_repository = DistributionRepository(engine)
 
 @app.route('/')
@@ -40,7 +44,6 @@ def update_distribution(distribution_id):
 
     return render_template('update_distribution.html', distribution=distribution)
 
-
 @app.route('/delete_distribution/<int:distribution_id>', methods=['POST'])
 def delete_distribution(distribution_id):
     distribution_repository.delete_distribution(distribution_id)
@@ -64,17 +67,59 @@ def upload():
             return redirect(url_for('index'))
 
     return render_template('upload.html')
-@app.route('/save',methods=['GET'])
-def save():
-    distributions = distribution_repository.get_all(Distribution)
 
-    data = {'distribution_id':[d.distribution_id for d in distributions],
-            'student_id':[d.student_id for d in distributions],
-            'theme_id':[d.theme_id for d in distributions],
-            'adviser_id':[d.adviser_id for d in distributions]
-            }
-    df = pd.DataFrame(data)
-    df.to_excel('distributions.xlsx',index=False)
+@app.route('/save', methods=['GET'])
+def save():
+    # Создание новой сессии
+    session = Session()
+
+    try:
+        # Предварительная загрузка связанных объектов
+        distributions = (
+            session.query(Distribution)
+            .options(joinedload(Distribution.student),
+                     joinedload(Distribution.theme),
+                     joinedload(Distribution.adviser))
+            .all()
+        )
+
+        data = {
+            'distribution_id': [d.distribution_id for d in distributions],
+            'student_name': [f"{d.student.lastname} {d.student.firstname} {d.student.patronymic} " for d in distributions],
+            'theme_name': [d.theme.theme_name for d in distributions],
+            'adviser_name': [f"{d.adviser.firstname} {d.adviser.lastname}  {d.adviser.patronymic} " for d in distributions]
+        }
+
+        # Создание DataFrame
+        df = pd.DataFrame(data)
+
+        # Создание нового Excel файла
+        wb = Workbook()
+        ws = wb.active
+
+        # Заполнение данных в Excel
+        for r_idx, row in df.iterrows():
+            for c_idx, value in enumerate(row):
+                cell = ws.cell(row=r_idx + 1, column=c_idx + 1, value=value)
+                # Установка выравнивания по центру
+                cell.alignment = Alignment(horizontal='left', vertical='center')
+
+        for column in ws.columns:
+            max_length = 0
+            column = [cell for cell in column]
+            for cell in column:
+                try:
+                    if len(str(cell.value)) > max_length:
+                        max_length = len(cell.value)
+                except:
+                    pass
+            adjusted_width = (max_length + 2)
+            ws.column_dimensions[column[0].column_letter].width = adjusted_width
+        # Сохранение файла
+        wb.save('distributions.xlsx')
+    finally:
+        session.close()  # Закрытие сессии
+
     return redirect(url_for('index'))
 
 if __name__ == '__main__':

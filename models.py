@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, Float, UniqueConstraint
+from sqlalchemy import Column, Integer, String, ForeignKey, Float
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 
@@ -14,6 +14,7 @@ class Student(Base):
 
     grades = relationship("StudentSubjectGrade", back_populates="student")
     interests = relationship("StudentThemeInterest", back_populates="student")
+    distributions = relationship("Distribution", back_populates="student")
 
 class Adviser(Base):
     __tablename__ = 'advisers'
@@ -24,6 +25,7 @@ class Adviser(Base):
     number_of_places = Column(Integer, nullable=False)
 
     adviser_themes = relationship("AdviserTheme", back_populates="adviser")
+    distributions = relationship("Distribution", back_populates="adviser")
 
 class Subject(Base):
     __tablename__ = 'subjects'
@@ -41,6 +43,7 @@ class Theme(Base):
     subject_importances = relationship("ThemeSubjectImportance", back_populates="theme")
     student_theme_interests = relationship("StudentThemeInterest", back_populates="theme")
     adviser_themes = relationship("AdviserTheme", back_populates="theme")
+    distributions = relationship("Distribution", back_populates="theme")
 
 class AdviserTheme(Base):
     __tablename__ = 'adviser_themes'
@@ -87,12 +90,14 @@ class Distribution(Base):
     __tablename__ = 'distributions'
 
     distribution_id = Column(Integer, primary_key=True)
-    student_id  = Column(Integer)
-    theme_id  = Column(Integer)
-    adviser_id  = Column(Integer)
+    student_id = Column(Integer, ForeignKey('students.student_id'), nullable=False)
+    theme_id = Column(Integer, ForeignKey('themes.theme_id'), nullable=False)
+    adviser_id = Column(Integer, ForeignKey('advisers.adviser_id'), nullable=False)
     interest_level = Column(Integer)
-    #distribution_algorithm = relationship("DistributionAlgorithm", back_populates="distributions")
 
+    student = relationship("Student", back_populates="distributions")
+    theme = relationship("Theme", back_populates="distributions")
+    adviser = relationship("Adviser", back_populates="distributions")
 
 class DistributionAlgorithm(Base):
     __tablename__ = 'distribution_algorithms'
