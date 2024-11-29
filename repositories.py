@@ -44,7 +44,7 @@ class StudentRepository(BaseRepository):
 
     def update_student(self, student_id, firstname=None, lastname=None, patronymic=None, group_student=None):
         with self.Session() as session:
-            student = self.get_by_id(Student,student_id, id_field=student_id)
+            student = self.get_by_id(Student,student_id, id_field="student_id")
             if student:
                 if firstname: student.firstname = firstname
                 if lastname: student.lastname = lastname
@@ -54,7 +54,7 @@ class StudentRepository(BaseRepository):
 
     def delete_student(self, student_id):
         with self.Session() as session:
-            student = self.get_by_id(Student,student_id, id_field=student_id)
+            student = self.get_by_id(Student,student_id, id_field="student_id")
             if student:
                 session.delete(student)
                 session.commit()
@@ -72,9 +72,7 @@ class StudentRepository(BaseRepository):
                 f"Группа: {student.group_student}")
 
 
-    def get_by_student_id(self, record_id):
-        with self.Session() as session:
-            return session.query(Student).filter(Student.student_id == record_id).first()
+
 
 
 class AdviserRepository(BaseRepository):
@@ -89,7 +87,7 @@ class AdviserRepository(BaseRepository):
 
     def update_adviser(self, adviser_id, firstname=None, lastname=None, patronymic=None, number_of_places=None):
         with self.Session() as session:
-            adviser_record = self.get_by_id(Adviser,adviser_id, id_field=adviser_id)
+            adviser_record = self.get_by_id(Adviser,adviser_id, id_field="adviser_id")
             if adviser_record:
                 if firstname: adviser_record.firstname = firstname
                 if lastname: adviser_record.lastname = lastname
@@ -99,7 +97,7 @@ class AdviserRepository(BaseRepository):
 
     def delete_adviser(self, adviser_id):
         with self.Session() as session:
-            adviser_record = self.get_by_id(Adviser,adviser_id, id_field=adviser_id)
+            adviser_record = self.get_by_id(Adviser,adviser_id, id_field="adviser_id")
             if adviser_record:
                 session.delete(adviser_record)
                 session.commit()
@@ -147,14 +145,14 @@ class SubjectRepository(BaseRepository):
 
     def update_subject(self, subject_id, subject_name):
         with self.Session() as session:
-            subject = self.get_by_id(Subject,subject_id, id_field=subject_id)
+            subject = self.get_by_id(Subject,subject_id, id_field="subject_id")
             if subject:
                 subject.subject_name = subject_name
                 session.commit()
 
     def delete_subject(self, subject_id):
         with self.Session() as session:
-            subject = self.get_by_id(Subject,subject_id, id_field=subject_id)
+            subject = self.get_by_id(Subject,subject_id, id_field="subject_id")
             if subject:
                 session.delete(subject)
                 session.commit()
@@ -184,14 +182,14 @@ class ThemeRepository(BaseRepository):
 
     def update_theme(self, theme_id, theme_name=None):
         with self.Session() as session:
-            theme_record = self.get_by_id(Theme,theme_id, id_field=theme_id)
+            theme_record = self.get_by_id(Theme,theme_id, id_field="theme_id")
             if theme_record:
                 if theme_name: theme_record.theme_name = theme_name
                 session.commit()
 
     def delete_theme(self, theme_id):
         with self.Session() as session:
-            theme_record = self.get_by_id(Theme,theme_id, id_field=theme_id)
+            theme_record = self.get_by_id(Theme,theme_id, id_field="theme_id")
             if theme_record:
                 session.delete(theme_record)
                 session.commit()
@@ -260,7 +258,7 @@ class ThemeSubjectImportanceRepository(BaseRepository):
 
     def update_theme_subject_importance(self, theme_subject_importance_id, theme_id=None, subject_id=None, weight=None):
         with self.Session() as session:
-            theme_subject_importance_record = self.get_by_id(ThemeSubjectImportance,theme_subject_importance_id, id_field=theme_subject_importance_id)
+            theme_subject_importance_record = self.get_by_id(ThemeSubjectImportance,theme_subject_importance_id, id_field="theme_subject_importance_id")
             if theme_subject_importance_record:
                 if theme_id is not None: theme_subject_importance_record.theme_id = theme_id
                 if subject_id is not None: theme_subject_importance_record.subject_id = subject_id
@@ -269,7 +267,7 @@ class ThemeSubjectImportanceRepository(BaseRepository):
 
     def delete_theme_subject_importance(self, theme_subject_importance_id):
         with self.Session() as session:
-            theme_subject_importance_record = self.get_by_id(ThemeSubjectImportance,theme_subject_importance_id, id_field=theme_subject_importance_id)
+            theme_subject_importance_record = self.get_by_id(ThemeSubjectImportance,theme_subject_importance_id, id_field="theme_subject_importance_id")
             if theme_subject_importance_record:
                 session.delete(theme_subject_importance_record)
                 session.commit()
@@ -331,7 +329,7 @@ class StudentSubjectGradeRepository(BaseRepository):
 
     def update_student_subject_grade(self, student_subject_grade_id, student_id=None, subject_id=None, grade=None):
         with self.Session() as session:
-            student_subject_grade_record = self.get_by_id(StudentSubjectGrade,student_subject_grade_id, id_field=student_subject_grade_id)
+            student_subject_grade_record = self.get_by_id(StudentSubjectGrade,student_subject_grade_id, id_field="student_subject_grade_id")
             if student_subject_grade_record:
                 if student_id is not None: student_subject_grade_record.student_id = student_id
                 if subject_id is not None: student_subject_grade_record.subject_id = subject_id
@@ -340,7 +338,7 @@ class StudentSubjectGradeRepository(BaseRepository):
 
     def delete_student_subject_grade(self, student_subject_grade_id):
         with self.Session() as session:
-            student_subject_grade_record = self.get_by_id(StudentSubjectGrade,student_subject_grade_id, id_field=student_subject_grade_id)
+            student_subject_grade_record = self.get_by_id(StudentSubjectGrade,student_subject_grade_id, id_field="student_subject_grade_id")
             if student_subject_grade_record:
                 session.delete(student_subject_grade_record)
                 session.commit()
@@ -653,12 +651,18 @@ class DistributionRepository(BaseRepository):
             except Exception as e:
                 logging.error(f"Ошибка при получении распределений: {e}")
 
-    def update_distribution(self,distribution_id,student_id=None,theme_id=None, adviser_id=None):
-        with self.Session() as session:
-            distribution_record = self.get_by_id(Distribution,distribution_id, id_field=distribution_id)
-            if distribution_record:
-                if student_id: distribution_record.student_id = student_id
-                if theme_id:distribution_record.theme_id = theme_id
-                if adviser_id: distribution_record.adviser_id = adviser_id
+    def update_distribution(self, distribution_id, student_id, theme_id, adviser_id):
+        session = self.Session()
+        try:
+            distribution = session.query(Distribution).filter(Distribution.distribution_id == distribution_id).first()
+            if distribution:
+                distribution.student_id = student_id
+                distribution.theme_id = theme_id
+                distribution.adviser_id = adviser_id
                 session.commit()
+        except Exception as e:
+            session.rollback()
+            print(f"Error updating distribution: {e}")
+        finally:
+            session.close()
 
