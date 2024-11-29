@@ -17,9 +17,6 @@
         <label for="adviser_id">ID Руководителя:</label>
         <input type="text" id="adviser_id" name="adviser_id" value="{{ distribution.adviser_id }}" required>
         <br>
-        <label for="interest_level">Уровень интереса:</label>
-        <input type="text" id="interest_level" name="interest_level" value="{{ distribution.interest_level }}" required>
-        <br>
         <button type="submit">Обновить</button>
     </form>
     <a href="{{ url_for('index') }}">Назад</a>

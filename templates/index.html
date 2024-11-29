@@ -24,10 +24,7 @@
             <td>{{ distribution.student_id }}</td>
             <td>{{ distribution.theme_id }}</td>
             <td>{{ distribution.adviser_id }}</td>
-            <td>{{ distribution.interest_level }}</td>
-            <td>
-                <a href="{{ url_for('update_distribution', distribution_id=distribution.id) }}">Изменить</a>
-            </td>
+                <a href="{{ url_for('update_distribution', distribution_id=distribution.distribution_id) }}">Изменить</a></td>
         </tr>
         {% endfor %}
     </table>
