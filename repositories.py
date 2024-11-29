@@ -666,3 +666,10 @@ class DistributionRepository(BaseRepository):
         finally:
             session.close()
 
+    def delete_distribution(self, distribution_id):
+        session = self.Session()
+        distribution = self.get_by_id(Distribution,distribution_id, id_field='distribution_id')
+        if distribution:
+            session.delete(distribution)
+            session.commit()
+            session.close()
