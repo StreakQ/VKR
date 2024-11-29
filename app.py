@@ -1,3 +1,4 @@
+
 from flask import Flask, render_template, request, redirect, url_for
 from sqlalchemy import create_engine
 from repositories import DistributionRepository
@@ -63,6 +64,18 @@ def upload():
             return redirect(url_for('index'))
 
     return render_template('upload.html')
+@app.route('/save',methods=['GET'])
+def save():
+    distributions = distribution_repository.get_all(Distribution)
+
+    data = {'distribution_id':[d.distribution_id for d in distributions],
+            'student_id':[d.student_id for d in distributions],
+            'theme_id':[d.theme_id for d in distributions],
+            'adviser_id':[d.adviser_id for d in distributions]
+            }
+    df = pd.DataFrame(data)
+    df.to_excel('distributions.xlsx',index=False)
+    return redirect(url_for('index'))
 
 if __name__ == '__main__':
     app.run(debug=True)
