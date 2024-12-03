@@ -34,7 +34,15 @@ def display_students():
     students = student_repository.get_all(Student)
     return render_template('student_data.html',students=students)
 
+@app.route("/advisers")
+def display_advisers():
+    advisers = adviser_repository.get_all(Adviser)
+    return render_template("adviser_data.html",advisers=advisers)
 
+@app.route("/themes")
+def display_themes():
+    themes = theme_repository.get_all(Theme)
+    return render_template("theme_data.html",themes=themes)
 @app.route('/add_distribution', methods=['GET', 'POST'])
 def add_distribution():
     if request.method == 'POST':
