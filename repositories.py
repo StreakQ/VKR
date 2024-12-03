@@ -35,6 +35,7 @@ class BaseRepository:
     def get_all_without_close(self, model):
         return self.session.query(model).all()
 
+
 class StudentRepository(BaseRepository):
     def __init__(self, engine):
         super().__init__(engine)

@@ -1,7 +1,7 @@
 from sqlalchemy.orm import sessionmaker, joinedload
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, session
 from sqlalchemy import create_engine
-from repositories import DistributionRepository
+from repositories import *
 from models import Distribution
 import pandas as pd
 from openpyxl import Workbook
@@ -14,11 +14,26 @@ app = Flask(__name__)
 engine = create_engine('sqlite:///database.db')
 Session = sessionmaker(bind=engine)
 distribution_repository = DistributionRepository(engine)
+student_repository = StudentRepository(engine)
+adviser_repository = AdviserRepository(engine)
+theme_repository = ThemeRepository(engine)
 
 @app.route('/')
 def index():
-    distributions = distribution_repository.get_all(Distribution)
+    session = Session()
+    distributions = (session.query(Distribution).options(
+        joinedload(Distribution.student),
+        joinedload(Distribution.adviser),
+    joinedload(Distribution.theme)).all()
+    )
+
     return render_template('index.html', distributions=distributions)
+
+@app.route("/students")
+def display_students():
+    students = student_repository.get_all(Student)
+    return render_template('student_data.html',students=students)
+
 
 @app.route('/add_distribution', methods=['GET', 'POST'])
 def add_distribution():
