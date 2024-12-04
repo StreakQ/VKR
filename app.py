@@ -31,7 +31,9 @@ def index():
 
 @app.route("/run_main")
 def run_main():
-    subprocess.Popen(['python', 'main.py'])
+    result = subprocess.run([r'C:\PycharmProjects\vkr\.venv\Scripts\python.exe', r'C:\PycharmProjects\vkr\main.py'], capture_output=True, text=True)
+    if result.returncode != 0:
+        print("Error:", result.stderr)
     return redirect(url_for('index'))
 
 @app.route("/students")
