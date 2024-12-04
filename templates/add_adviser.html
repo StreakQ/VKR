@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Добавление научного руководителя</title>
+    <style>
+        body{
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            padding: 30px;
+            text-align: center;
+
+        }
+        h1{
+            background-color: #f2f2f2;
+            text-align: center;
+        }
+        form{
+            background-color: #fff;
+            border-radius: 5px;
+            padding: 20px;
+            margin: auto;
+            width: 300px;
+        }
+        label{
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+
+        }
+        input[type='text']{
+            width: 90%;
+            padding: 5px;
+            border-radius: 5px;
+            border: 1px solid;
+            margin-bottom: 13px;
+        }
+        button{
+            background-color: #4cae4c;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 16px;
+            border: 1px solid;
+            margin-bottom: 12px;
+            color: white;
+            width: 50%;
+
+        }
+        button:hover{
+            background-color: green;
+        }
+        .back-button{
+            background-color: #007bff;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 16px;
+            margin-bottom: 8px;
+            color: white;
+            width: 50%;
+        }
+        .back-button:hover{
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+<h1>Добавление научного руководителя</h1>
+<form method="POST">
+    <label for="adviser_id">ID Научного руководителя </label>
+    <input type="text" id="adviser_id" name = "adviser_id" required>
+
+     <label for="lastname">Фамилия</label>
+    <input type="text" id = "lastname" name = "lastname" required>
+
+    <label for="firstname">Имя</label>
+    <input type="text" id = "firstname" name = "firstname" required>
+
+     <label for="patronymic">Отчество</label>
+    <input type="text" id = "patronymic" name = "patronymic" required>
+
+     <label for="number_of_places">Количество мест</label>
+    <input type="text" id = "number_of_places" name = "number_of_places" required>
+
+    <button type="submit">Добавить</button>
+    <button type="button" class="back-button" onclick="window.location.href='{{url_for('display_advisers')}}'">Назад</button>
+</form>
+</body>
+</html>

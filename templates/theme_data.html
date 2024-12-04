@@ -2,9 +2,68 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Title</title>
+    <title>Темы</title>
+    <style>
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top:15px;
+        }
+
+         td,th{
+            border: 1px solid ;
+            padding: 8px;
+            text-align: center;
+        }
+
+        th{
+            background-color: lightgray;
+            font-size: 16px;
+            font-weight: bold;
+        }
+        a {
+            font-size: 16px;
+            padding: 5px 10px;
+            text-decoration: none;
+            color: #007bff;
+            border: 1px solid transparent;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+
+        a:hover {
+            background-color: #e7f0ff;
+            border-color: #007bff;
+        }
+        h1{
+            margin-bottom: 10px;
+        }
+    </style>
 </head>
 <body>
+    <h1>Список Тем</h1>
+    <a href="{{url_for('index')}}">Вернуться на главную страницу</a>
+    <a href="{{url_for('add_theme')}}">Добавить тему</a>
 
+    <table>
+        <tr>
+            <th>ID Темы</th>
+            <th>Название темы</th>
+<!--            <th>Удаление строки</th>-->
+        </tr>
+        {%for theme in themes%}
+        <tr>
+            <td>{{theme.theme_id}}</td>
+            <td>{{theme.theme_name}}</td>
+            
+<!--            <td>-->
+<!--               <button onclick="showDeleteConfirmationTheme({{theme.theme_id}},'{{theme.theme_name}}')">Удалить</button>-->
+<!--            </td>-->
+        </tr>
+        {%endfor%}
+    </table>
+    {%include 'modal_delete.html'%}
+    <script src="../static/modal_delete_theme.js"></script>
 </body>
 </html>

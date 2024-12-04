@@ -8,27 +8,50 @@
         table {
             width: 100%;
             border-collapse: collapse;
+            margin-top:15px;
         }
 
-        th, td{
-            border: 1px solid #000;
+         td,th{
+            border: 1px solid ;
             padding: 8px;
             text-align: center;
         }
 
         th{
-            background-color: #f2f2f2;
+            background-color: lightgray;
+            font-size: 16px;
+            font-weight: bold;
+        }
+        a {
+            font-size: 16px;
+            padding: 5px 10px;
+            text-decoration: none;
+            color: #007bff;
+            border: 1px solid transparent;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+
+        a:hover {
+            background-color: #e7f0ff;
+            border-color: #007bff;
+        }
+        h1{
+            margin-bottom: 10px;
         }
     </style>
 </head>
 <body>
     <h1>Список Студентов</h1>
+    <a href="{{url_for('index')}}">Вернуться на главную страницу</a>
     <table>
         <tr>
-            <td>ID Студента</td>
-            <td>Фамилия</td>
-            <td>Имя</td>
-            <td>Группа</td>
+            <th>ID Студента</th>
+            <th>Фамилия</th>
+            <th>Имя</th>
+            <th>Группа</th>
+            <th>Удаление строки</th>
+
         </tr>
         {%for student in students%}
         <tr>
@@ -36,9 +59,7 @@
             <td>{{student.lastname}}</td>
             <td>{{student.firstname}}</td>
             <td>{{student.group_student}}</td>
-            <td>
-                <a href=" "> Изменить</a>
-            </td>
+
             <td>
                 <a href=" ">Удалить</a>
             </td>

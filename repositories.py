@@ -135,6 +135,12 @@ class AdviserRepository(BaseRepository):
     def get_by_adviser_id(self, adviser_id, session):
         return session.query(Adviser).filter(Adviser.adviser_id == adviser_id).first()
 
+    def add_adviser_for_app(self,adviser_id,firstname,lastname,patronymic,number_of_places):
+        with self.Session() as session:
+            new_adviser = Adviser(adviser_id=adviser_id,firstname=firstname,lastname=lastname,patronymic=patronymic,number_of_places=number_of_places)
+            session.add(new_adviser)
+            session.commit()
+
 
 
 class SubjectRepository(BaseRepository):
@@ -207,7 +213,11 @@ class ThemeRepository(BaseRepository):
         for theme in themes:
             print(f"ID Темы: {theme.theme_id}, Название: {theme.theme_name}")
 
-
+    def add_theme_for_app(self, theme_id,theme_name):
+        with self.Session() as session:
+            new_theme = Theme(theme_id=theme_id, theme_name=theme_name)
+            session.add(new_theme)
+            session.commit()
 
 class AdviserThemeRepository(BaseRepository):
     def __init__(self, engine, adviser_repository, theme_repository):
@@ -314,7 +324,7 @@ class ThemeSubjectImportanceRepository(BaseRepository):
                     for subject, normalized_weight in zip(selected_subjects, normalized_weights):
                         self.add_theme_subject_importance(theme.theme_id, subject.subject_id, normalized_weight)
 
-                    add_session.commit()  # Коммитим изменения
+                    add_session.commit()
                 except Exception as e:
                     add_session.rollback()
                     print(f"Ошибка при добавлении: {e}")
@@ -672,8 +682,17 @@ class DistributionRepository(BaseRepository):
 
     def delete_distribution(self, distribution_id):
         session = self.Session()
-        distribution = self.get_by_id(Distribution,distribution_id, id_field='distribution_id')
-        if distribution:
-            session.delete(distribution)
-            session.commit()
+        try:
+            distribution = self.get_by_id(Distribution, distribution_id, id_field='distribution_id')
+            if distribution:
+                session.delete(distribution)
+                session.commit()
+                return True
+            else:
+                return False
+        except Exception as e:
+            session.rollback()
+            print(f"Ошибка при удалении распределения: {e}")
+            return False
+        finally:
             session.close()

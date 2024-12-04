@@ -15,22 +15,18 @@
             margin-top: 20px;
         }
         th, td {
-            border: 1px solid #ddd;
+            border: 1px solid ;
             padding: 8px;
             text-align: left;
         }
         th {
-            background-color: #f2f2f2;
+            background-color: lightgray;
         }
-        a, button {
-            margin-right: 20px;
-            text-decoration: none;
-            color: blue;
-        }
+
         a:hover, button:hover {
             text-decoration: underline;
         }
-        /* Стили для модального окна */
+
         #confirmDeleteModal {
             display: none;
             position: fixed;
@@ -41,16 +37,35 @@
             background-color: rgba(0, 0, 0, 0.5);
             z-index: 1000;
         }
+        a,button {
+            font-size: 16px;
+            padding: 5px 10px;
+            text-decoration: none;
+            color: #007bff;
+            border: 1px solid transparent;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+            margin-bottom: 5px;
+            margin-top: 5px;
+        }
+
+        a:hover {
+            background-color: #e7f0ff;
+            border-color: #007bff;
+        }
+        h1{
+            margin-bottom: 10px;
+        }
     </style>
 </head>
 <body>
     <h1>Список распределений</h1>
+        {% include 'dropdown_tables.html' %}
+
     <a href="{{ url_for('add_distribution') }}">Добавить распределение</a>
-<!--    <a href="{{ url_for('upload') }}">Загрузить данные из Excel</a>-->
     <a href="{{ url_for('save') }}"> Сохранить распределения в Excel</a>
-    <a href="{{url_for('display_students')}}">Студенты</a>
-    <a href="{{url_for('display_advisers')}}">Преподаватели</a>
-    <a href="{{url_for('display_themes')}}">Темы</a>
+    <a href="{{url_for('run_main')}}">Запустить алгоритм</a>
+
 
     <table>
         <tr>
@@ -68,43 +83,13 @@
             <td>{{ distribution.adviser.firstname }} {{ distribution.adviser.lastname }} {{ distribution.adviser.patronymic }}</td>
             <td>
                 <a href="{{ url_for('update_distribution', distribution_id=distribution.distribution_id) }}">Изменить</a>
-                <button onclick="showDeleteConfirmation({{ distribution.distribution_id }}, '{{ distribution.student_id }}', '{{ distribution.theme_id }}', '{{ distribution.adviser_id }}')">Удалить</button>
+                <button onclick="showDeleteConfirmationDistribution({{ distribution.distribution_id }}, '{{ distribution.student_id }}', '{{ distribution.theme_id }}', '{{ distribution.adviser_id }}')">Удалить</button>
             </td>
         </tr>
         {% endfor %}
     </table>
+    {% include 'modal_delete.html' %}
+    <script src="../static/modal_delete_distribution.js"></script>
 
-    <!-- Модальное окно для подтверждения удаления -->
-    <div id="confirmDeleteModal">
-        <div style="background-color:white; padding:20px; border:1px solid #ccc; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); z-index:1000;">
-            <h2>Подтверждение удаления</h2>
-            <p id="deleteConfirmationMessage"></p>
-            <button id="confirmDeleteButton">Удалить</button>
-            <button id="cancelDeleteButton">Отмена</button>
-        </div>
-    </div>
-
-    <script>
-        let deleteDistributionId;
-
-        function showDeleteConfirmation(distributionId, studentId, themeId, adviserId) {
-            deleteDistributionId = distributionId;
-            const message = `Вы уверены, что хотите удалить распределение?\n\nID: ${distributionId}\nСтудент: ${studentId}\nТема: ${themeId}\nРуководитель: ${adviserId}`;
-            document.getElementById('deleteConfirmationMessage').innerText = message;
-            document.getElementById('confirmDeleteModal').style.display = 'block';
-        }
-
-        document.getElementById('confirmDeleteButton').onclick = function() {
-            const form = document.createElement('form');
-            form.method = 'POST';
-            form.action = `/delete_distribution/${deleteDistributionId}`;
-            document.body.appendChild(form);
-            form.submit();
-        };
-
-        document.getElementById('cancelDeleteButton').onclick = function() {
-            document.getElementById('confirmDeleteModal').style.display = 'none';
-        };
-    </script>
 </body>
 </html>

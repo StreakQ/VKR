@@ -7,6 +7,7 @@ import pandas as pd
 from openpyxl import Workbook
 from openpyxl.styles import Alignment
 import os
+import subprocess
 
 app = Flask(__name__)
 
@@ -20,29 +21,55 @@ theme_repository = ThemeRepository(engine)
 
 @app.route('/')
 def index():
-    session = Session()
-    distributions = (session.query(Distribution).options(
-        joinedload(Distribution.student),
-        joinedload(Distribution.adviser),
-    joinedload(Distribution.theme)).all()
-    )
-
+    with Session() as session:
+        distributions = (session.query(Distribution).options(
+            joinedload(Distribution.student),
+            joinedload(Distribution.adviser),
+            joinedload(Distribution.theme)).all()
+        )
     return render_template('index.html', distributions=distributions)
+
+@app.route("/run_main")
+def run_main():
+    subprocess.Popen(['python', 'main.py'])
+    return redirect(url_for('index'))
 
 @app.route("/students")
 def display_students():
     students = student_repository.get_all(Student)
-    return render_template('student_data.html',students=students)
+    return render_template('student_data.html', students=students)
 
 @app.route("/advisers")
 def display_advisers():
     advisers = adviser_repository.get_all(Adviser)
-    return render_template("adviser_data.html",advisers=advisers)
+    return render_template("adviser_data.html", advisers=advisers)
 
 @app.route("/themes")
 def display_themes():
     themes = theme_repository.get_all(Theme)
-    return render_template("theme_data.html",themes=themes)
+    return render_template("theme_data.html", themes=themes)
+
+@app.route("/add_theme", methods=['GET' , 'POST'])
+def add_theme():
+    if request.method == 'POST':
+        theme_id = request.form['theme_id']
+        theme_name = request.form['theme_name']
+        theme_repository.add_theme_for_app(theme_id, theme_name)
+        return redirect(url_for('display_themes'))
+    return render_template("add_theme.html")
+
+@app.route("/add_adviser", methods=['GET', 'POST'])
+def add_adviser():
+    if request.method == 'POST':
+        adviser_id = request.form['adviser_id']
+        firstname = request.form['firstname']
+        lastname = request.form['lastname']
+        patronymic = request.form['patronymic']
+        number_of_places = request.form['number_of_places']
+        adviser_repository.add_adviser_for_app(adviser_id, firstname, lastname, patronymic, number_of_places)
+        return redirect(url_for("display_advisers"))
+    return render_template("add_adviser.html")
+
 @app.route('/add_distribution', methods=['GET', 'POST'])
 def add_distribution():
     if request.method == 'POST':
@@ -67,6 +94,16 @@ def update_distribution(distribution_id):
 
     return render_template('update_distribution.html', distribution=distribution)
 
+@app.route('/delete_adviser/<int:adviser_id>', methods=['POST'])
+def delete_adviser(adviser_id):
+    adviser_repository.delete_adviser(adviser_id)
+    return redirect(url_for('display_advisers'))
+
+@app.route('/delete_theme/<int:theme_id>', methods=['POST'])
+def delete_theme(theme_id):
+    theme_repository.delete_theme(theme_id)
+    return redirect(url_for('display_themes'))
+
 @app.route('/delete_distribution/<int:distribution_id>', methods=['POST'])
 def delete_distribution(distribution_id):
     distribution_repository.delete_distribution(distribution_id)
@@ -77,6 +114,8 @@ def upload():
     if request.method == 'POST':
         file = request.files['file']
         if file and file.filename.endswith('.xlsx'):
+            if not os.path.exists('uploads'):
+                os.makedirs('uploads')
             file_path = os.path.join('uploads', file.filename)
             file.save(file_path)
             df = pd.read_excel(file_path)
@@ -93,11 +132,7 @@ def upload():
 
 @app.route('/save', methods=['GET'])
 def save():
-    # Создание новой сессии
-    session = Session()
-
-    try:
-        # Предварительная загрузка связанных объектов
+    with Session() as session:
         distributions = (
             session.query(Distribution)
             .options(joinedload(Distribution.student),
@@ -106,25 +141,23 @@ def save():
             .all()
         )
 
+        if not distributions:
+            return redirect(url_for('index'))  # Если нет данных, перенаправляем
+
         data = {
             'distribution_id': [d.distribution_id for d in distributions],
-            'student_name': [f"{d.student.lastname} {d.student.firstname} {d.student.patronymic} " for d in distributions],
+            'student_name': [f"{d.student.lastname} {d.student.firstname} {d.student.patronymic}" for d in distributions],
             'theme_name': [d.theme.theme_name for d in distributions],
-            'adviser_name': [f"{d.adviser.firstname} {d.adviser.lastname}  {d.adviser.patronymic} " for d in distributions]
+            'adviser_name': [f"{d.adviser.firstname} {d.adviser.lastname} {d.adviser.patronymic}" for d in distributions]
         }
 
-        # Создание DataFrame
         df = pd.DataFrame(data)
-
-        # Создание нового Excel файла
         wb = Workbook()
         ws = wb.active
 
-        # Заполнение данных в Excel
         for r_idx, row in df.iterrows():
             for c_idx, value in enumerate(row):
                 cell = ws.cell(row=r_idx + 1, column=c_idx + 1, value=value)
-                # Установка выравнивания по центру
                 cell.alignment = Alignment(horizontal='left', vertical='center')
 
         for column in ws.columns:
@@ -138,12 +171,15 @@ def save():
                     pass
             adjusted_width = (max_length + 2)
             ws.column_dimensions[column[0].column_letter].width = adjusted_width
-        # Сохранение файла
+
         wb.save('distributions.xlsx')
-    finally:
-        session.close()  # Закрытие сессии
 
     return redirect(url_for('index'))
 
 if __name__ == '__main__':
     app.run(debug=True)
+
+# <!--    <a href="{{url_for('choose_interest_themes')}}">Выбор интересующих тем</a>-->
+# <!--            <a href="{{ url_for('display_theme_subjects') }}">Таблица связи тем и предметов</a>-->
+# <!--            <a href="{{ url_for('display_adviser_themes') }}">Таблица связи научных руководителей и тем</a>-->
+# <!--            <a href="{{ url_for('display_student_theme_interests') }}">Таблица интересов студентов</a>-->
