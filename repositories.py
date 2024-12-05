@@ -538,7 +538,7 @@ class DistributionAlgorithmRepository(BaseRepository):
                         AdviserTheme.adviser_id == adviser.adviser_id).all()
                 ]
 
-            adviser_repository = AdviserRepository(session)  # Создаем экземпляр AdviserRepository
+            adviser_repository = AdviserRepository(session)
 
             for theme_id, student_id, total_weighted_grade, interest_level in sorted_results:
                 if student_id in assigned_students:
@@ -589,7 +589,6 @@ class DistributionAlgorithmRepository(BaseRepository):
 
     def assign_student_to_adviser(self, student_id, theme_id, interest_level, advisers, adviser_themes,
                                   adviser_assignments, distributions_to_add, session, adviser_repository):
-        # Находим доступных научных руководителей
         available_advisers = [
             adviser for adviser in advisers.values()
             if adviser.number_of_places > 0 and
@@ -609,9 +608,7 @@ class DistributionAlgorithmRepository(BaseRepository):
             }
 
             distributions_to_add.append(distribution_entry)
-
-            # Уменьшаем количество мест у научного руководителя
-            adviser_repository.decrease_adviser_places(adviser.adviser_id, session)  # Передаем сессию
+            adviser_repository.decrease_adviser_places(adviser.adviser_id, session)
 
             return True
 

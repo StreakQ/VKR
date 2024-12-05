@@ -9,7 +9,6 @@ def main():
     Base.metadata.drop_all(engine)
     Base.metadata.create_all(engine)
 
-    # Создаем экземпляры репозиториев
     student_repository = StudentRepository(engine)
     subject_repository = SubjectRepository(engine)
     adviser_repository = AdviserRepository(engine)
@@ -22,7 +21,6 @@ def main():
     distribution_algorithm_repository = DistributionAlgorithmRepository(engine, student_subject_grade_repository, student_theme_interest_repository,
                                       theme_subject_importance_repository, adviser_theme_repository, distribution_repository)
 
-    # Очищаем репозитории
     student_repository.delete_all(Student)
     subject_repository.delete_all(Subject)
     adviser_repository.delete_all(Adviser)
@@ -39,7 +37,6 @@ def main():
     adviser_repository.add_initial_advisers()
     theme_repository.add_initial_themes()
 
-    # Получаем данные из репозиториев
     students = student_repository.get_all(Student)
     subjects = subject_repository.get_all(Subject)
     themes = theme_repository.get_all(Theme)
