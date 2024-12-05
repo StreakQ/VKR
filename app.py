@@ -122,6 +122,7 @@ def delete_distribution(distribution_id):
     distribution_repository.delete_distribution(distribution_id)
     return redirect(url_for('index'))
 
+#
 @app.route('/upload', methods=['GET', 'POST'])
 def upload():
     if request.method == 'POST':

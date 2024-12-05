@@ -693,3 +693,8 @@ class DistributionRepository(BaseRepository):
             return False
         finally:
             session.close()
+
+    # def clear_all_distributions(self):
+    #     with self.Session() as session:
+    #         session.query(Distribution).delete()
+    #         session.commit()
