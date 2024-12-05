@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Неназначенные студенты</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+
+        li {
+            background: #fff;
+            margin: 10px 0;
+            padding: 15px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        strong {
+            color: #555;
+        }
+
+        .theme-list {
+            margin-top: 10px;
+            padding-left: 20px;
+            border-left: 2px solid #007BFF;
+        }
+
+        .no-students {
+            text-align: center;
+            font-size: 18px;
+            color: #888;
+        }
+    </style>
+</head>
+<body>
+    <h1>Неназначенные студенты</h1>
+    {% if unassigned_students %}
+        <ul>
+            {% for student in unassigned_students %}
+                <li>
+                    <strong>Студент ID:</strong> {{ student.student_id }}<br>
+                    <strong>Имя:</strong> {{ student.name }}<br>
+                    <strong>Темы интересов:</strong>
+                    <ul class="theme-list">
+                        {% for theme in student.themes %}
+                            <li>Тема ID: {{ theme.theme_id }}, Название: {{ theme.theme_name }}</li>
+                        {% endfor %}
+                    </ul>
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p class="no-students">Нет неназначенных студентов.</p>
+    {% endif %}
+</body>
+</html>

@@ -67,18 +67,15 @@
     <table>
         <tr>
             <th>ID Научного руководителя</th>
-            <th>Фамилия</th>
-            <th>Имя</th>
-            <th>Отчество</th>
+            <th>ФИО</th>
             <th>Количество мест</th>
             <th>Удаление строки</th>
         </tr>
         {% for adviser in advisers %}
         <tr>
             <td>{{ adviser.adviser_id }}</td>
-            <td>{{ adviser.firstname }}</td>
-            <td>{{ adviser.lastname }}</td>
-            <td>{{ adviser.patronymic }}</td>
+            <td>{{ adviser.firstname }} {{ adviser.lastname }} {{ adviser.patronymic }}</td>
+
             <td>{{ adviser.number_of_places }}</td>
             <td>
             <button onclick="showDeleteConfirmationAdviser({{ adviser.adviser_id }}, '{{ adviser.firstname }}', '{{ adviser.lastname }}', '{{ adviser.patronymic }}')">Удалить</button>

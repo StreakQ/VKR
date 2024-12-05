@@ -8,10 +8,10 @@ from openpyxl import Workbook
 from openpyxl.styles import Alignment
 import os
 import subprocess
+from main import check_unassigned_students,main
 
 app = Flask(__name__)
-
-# Создание движка и сессии
+app.secret_key = 'key'
 engine = create_engine('sqlite:///database.db')
 Session = sessionmaker(bind=engine)
 distribution_repository = DistributionRepository(engine)
@@ -29,11 +29,22 @@ def index():
         )
     return render_template('index.html', distributions=distributions)
 
+
 @app.route("/run_main")
 def run_main():
-    result = subprocess.run([r'C:\PycharmProjects\vkr\.venv\Scripts\python.exe', r'C:\PycharmProjects\vkr\main.py'], capture_output=True, text=True)
+    result = subprocess.run([r'C:\PycharmProjects\vkr\.venv\Scripts\python.exe', r'C:\PycharmProjects\vkr\main.py'],
+                            capture_output=True, text=True)
     if result.returncode != 0:
         print("Error:", result.stderr)
+
+    # Получаем неназначенных студентов
+    unassigned_students_list, student_repository, student_theme_interest_repository, adviser_repository = main()
+    unassigned_info = check_unassigned_students(unassigned_students_list, student_repository,
+                                                student_theme_interest_repository)
+
+    # Сохраняем неназначенных студентов в сессии
+    session['unassigned_students'] = unassigned_info
+
     return redirect(url_for('index'))
 
 @app.route("/students")
@@ -177,6 +188,16 @@ def save():
         wb.save('distributions.xlsx')
 
     return redirect(url_for('index'))
+
+
+@app.route('/unassigned_students')
+def unassigned_students():
+    unassigned_info = session.get('unassigned_students', None)
+    if unassigned_info is None:
+        return render_template('unassigned_students.html', unassigned_students=[])  # Если нет неназначенных студентов, передаем пустой список
+    return render_template('unassigned_students.html', unassigned_students=unassigned_info)
+
+
 
 if __name__ == '__main__':
     app.run(debug=True)
