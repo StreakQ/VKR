@@ -156,7 +156,7 @@ def save():
         )
 
         if not distributions:
-            return redirect(url_for('index'))  # Если нет данных, перенаправляем
+            return redirect(url_for('index'))
 
         data = {
             'distribution_id': [d.distribution_id for d in distributions],
