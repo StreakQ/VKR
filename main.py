@@ -1,7 +1,10 @@
 from sqlalchemy import create_engine
 from models import Base
-from repositories import *
+from repositories import (StudentRepository,SubjectRepository,ThemeRepository,AdviserRepository,
+                          StudentSubjectGradeRepository,StudentThemeInterestRepository,ThemeSubjectImportanceRepository,
+                          AdviserThemeRepository,DistributionRepository,DistributionAlgorithmRepository)
 import random as rnd
+from models import *
 
 def main():
     engine = create_engine('sqlite:///database.db')
@@ -160,4 +163,6 @@ if __name__ == "__main__":
 #TODO 2: упростить алгоритм, разбив его на несколько функций
 #TODO 3: Изменить алгоритм так, чтобы он учитывал оба фактора распределения
 #TODO 4: Дополнить таблицы в веб-интерфейсе различными функциями
-#TODO 5: настроить методы доступа к веб-интерфейсу
+#TODO 5: настроить методы доступа к веб-интерфейсу( авторизация аутентификация и тд)
+# TODO 6: в вебе должен быть также переход между таблицами помимо перехода на главную
+# TODO 7: создать страницу для сбора информации у студентов

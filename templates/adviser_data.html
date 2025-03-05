@@ -4,10 +4,6 @@
     <meta charset="UTF-8">
     <title>Научные руководители</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
-        }
         table {
             width: 100%;
             border-collapse: collapse;
@@ -66,20 +62,20 @@
 </head>
 <body>
     <h1>Список Научных руководителей</h1>
+        {% include 'dropdown_tables.html' %}
     <a href="{{ url_for('index') }}">Вернуться на главную страницу</a>
     <a href="{{ url_for('add_adviser') }}">Добавить научного руководителя</a>
     <table>
         <tr>
             <th>ID Научного руководителя</th>
             <th>ФИО</th>
-            <th>Количество оставшихся мест</th>
+            <th>Количество мест</th>
             <th>Удаление строки</th>
         </tr>
         {% for adviser in advisers %}
         <tr>
             <td>{{ adviser.adviser_id }}</td>
-            <td>{{ adviser.firstname }} {{ adviser.lastname }} {{ adviser.patronymic }}</td>
-
+            <td>{{ adviser.firstname }} {{ adviser.lastname[0]}}.{{ adviser.patronymic[0] }}.</td>
             <td>{{ adviser.number_of_places }}</td>
             <td>
             <button onclick="showDeleteConfirmationAdviser({{ adviser.adviser_id }}, '{{ adviser.firstname }}', '{{ adviser.lastname }}', '{{ adviser.patronymic }}')">Удалить</button>

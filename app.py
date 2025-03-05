@@ -62,6 +62,11 @@ def display_themes():
     themes = theme_repository.get_all(Theme)
     return render_template("theme_data.html", themes=themes)
 
+@app.route("/form_student")
+def form_student():
+    return render_template("form_student.html")
+
+
 @app.route("/add_theme", methods=['GET' , 'POST'])
 def add_theme():
     if request.method == 'POST':

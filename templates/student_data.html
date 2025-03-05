@@ -46,12 +46,12 @@
 </head>
 <body>
     <h1>Список Студентов</h1>
+        {% include 'dropdown_tables.html' %}
     <a href="{{url_for('index')}}">Вернуться на главную страницу</a>
     <table>
         <tr>
             <th>ID Студента</th>
-            <th>Фамилия</th>
-            <th>Имя</th>
+            <th>ФИО</th>
             <th>Группа</th>
             <th>Удаление строки</th>
 
@@ -59,8 +59,7 @@
         {%for student in students%}
         <tr>
             <td>{{student.student_id}}</td>
-            <td>{{student.lastname}}</td>
-            <td>{{student.firstname}}</td>
+            <td>{{ student.lastname }} {{ student.firstname[0].upper() }}.{{ student.patronymic[0].upper()}}.</td>
             <td>{{student.group_student}}</td>
 
             <td>
