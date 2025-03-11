@@ -8,6 +8,9 @@ from faker import Faker
 import random as rnd
 import logging
 from data import *
+from collections import defaultdict, deque
+import heapq
+
 fake = Faker('ru_RU')
 
 class BaseRepository:
@@ -126,11 +129,12 @@ class AdviserRepository(BaseRepository):
         if adviser_record and adviser_record.number_of_places > 0:
             adviser_record.number_of_places -= 1
             session.commit()
-            print(
-                f"Уменьшено количество мест у научного руководителя ID {adviser_id}. Осталось мест: {adviser_record.number_of_places}")
-        else:
-            print(
-                f"Не удалось уменьшить количество мест у научного руководителя ID {adviser_id}. Возможно, мест нет.")
+
+    def increase_adviser_places(self, adviser_id, session):
+        adviser_record = self.get_by_adviser_id(adviser_id, session)
+        if adviser_record:
+            adviser_record.number_of_places += 1
+            session.commit()
 
     def get_by_adviser_id(self, adviser_id, session):
         return session.query(Adviser).filter(Adviser.adviser_id == adviser_id).first()
@@ -447,11 +451,6 @@ class DistributionAlgorithmRepository(BaseRepository):
             theme_subject_importance_records = session.query(ThemeSubjectImportance).all()
             student_subject_grade_records = session.query(StudentSubjectGrade).all()
 
-            # print("Темы и важность предметов:")
-            # for importance in theme_subject_importance_records:
-            #     print(
-            #         f"Тема ID: {importance.theme_id}, Предмет ID: {importance.subject_id}, Вес: {round(importance.weight, 2)}")
-
             subject_weights = {}
             for importance in theme_subject_importance_records:
                 theme_id = importance.theme_id
@@ -461,11 +460,6 @@ class DistributionAlgorithmRepository(BaseRepository):
                 if theme_id not in subject_weights:
                     subject_weights[theme_id] = {}
                 subject_weights[theme_id][subject_id] = weight
-
-            # print("\nВеса предметов по темам:")
-            # for theme_id, subjects in subject_weights.items():
-            #     print(
-            #         f"Тема ID: {theme_id}, Предметы и веса: { {subj_id: round(weight, 2) for subj_id, weight in subjects.items()} }")
 
             for theme_id, subjects in subject_weights.items():
                 for subject_id, weight in subjects.items():
@@ -481,6 +475,7 @@ class DistributionAlgorithmRepository(BaseRepository):
 
                             suitability_scores[(theme_id, student_id)] += weighted_grade
 
+            # Логирование суммарных взвешенных оценок
             # print("\nСуммарные взвешенные оценки:")
             # for key, score in suitability_scores.items():
             #     print(f"Тема ID: {key[0]}, Студент ID: {key[1]}, Взвешенная оценка: {round(score, 2)}")
@@ -490,6 +485,7 @@ class DistributionAlgorithmRepository(BaseRepository):
                 normalized_score = (suitability_scores[key] / max_possible_score) * 100 if max_possible_score > 0 else 0
                 suitability_scores[key] = round(normalized_score, 2)
 
+            # # Логирование нормализованных оценок
             # print("\nНормализованные оценки соответствия:")
             # for key, score in suitability_scores.items():
             #     print(f"Тема ID: {key[0]}, Студент ID: {key[1]}, Степень подходимости студента к теме: {score:.2f}%")
@@ -497,122 +493,193 @@ class DistributionAlgorithmRepository(BaseRepository):
         return suitability_scores
 
     def link_weighted_grades_with_interest(self):
-        result = []
+        student_scores = {}  # Словарь для хранения данных о студентах
         with self.student_theme_interest_repository.Session() as session:
             suitability_scores = self.link_theme_subject_importance_with_student_subject_grade()
             student_theme_interests = session.query(StudentThemeInterest).all()
 
+            # Сбор всех интересов студентов
             for (theme_id, student_id), suitability_score in suitability_scores.items():
                 interest_level = next((interest.interest_level for interest in student_theme_interests
                                        if interest.student_id == student_id and interest.theme_id == theme_id), None)
                 if interest_level is not None:
-                    result.append((theme_id, student_id, suitability_score, interest_level))
+                    # Сохраняем в словаре кортеж (степень подходимости, уровень интереса)
+                    student_scores[student_id] = student_scores.get(student_id, [])
+                    student_scores[student_id].append((theme_id, suitability_score, interest_level))
 
-            # Сортировка результатов
-            result.sort(key=lambda x: ( -x[2], x[3],  x[0], x[1]))
+            sorted_results = []
+            for student_id, scores in student_scores.items():
+                sorted_scores = sorted(scores, key=lambda x: ( x[2]))
+                sorted_results.extend([(student_id, theme_id, suitability_score, interest_level) for
+                                       theme_id, suitability_score, interest_level in sorted_scores])
 
             print("\nРезультаты соответствия тем и интересов студентов:")
-            for theme_id, student_id, suitability_score, interest_level in result:
+            for student_id, theme_id, suitability_score, interest_level in sorted_results:
                 print(f"Студент ID: {student_id}, Тема ID: {theme_id}, "
                       f"Степень подходимости: {round(suitability_score, 2)}%, "
                       f"Уровень интереса: {interest_level}")
 
-        return result
+        return sorted_results  # Возвращаем отсортированные результаты
 
     def assign_students_to_advisers_and_distribute(self):
-        suitability_results = self.link_weighted_grades_with_interest()
-        sorted_results = sorted(suitability_results, key=lambda x: (x[3], -x[2], x[0]))
-
+        sorted_results = self.link_weighted_grades_with_interest()
         unassigned_students = set()
         assigned_students = set()
-        distributions_to_add = []
+        distributions = []
 
-        with self.student_theme_interest_repository.Session() as session:
-            advisers = {adviser.adviser_id: adviser for adviser in session.query(Adviser).all()}
-            adviser_assignments = {adviser.adviser_id: 0 for adviser in advisers.values()}
+        with self.Session() as session:
+            advisers = {adv.adviser_id: adv for adv in session.query(Adviser).all()}
+            adviser_themes = defaultdict(list)
+            for adv_theme in session.query(AdviserTheme).all():
+                adviser_themes[adv_theme.adviser_id].append(adv_theme.theme_id)
 
-            adviser_themes = {}
-            for adviser in advisers.values():
-                adviser_themes[adviser.adviser_id] = [
-                    adviser_theme.theme_id for adviser_theme in session.query(AdviserTheme).filter(
-                        AdviserTheme.adviser_id == adviser.adviser_id).all()
-                ]
+            adviser_assignments = defaultdict(list)
+            theme_adviser_queue = defaultdict(deque)
+            theme_priority_queues = defaultdict(list)
+            student_entries = defaultdict(list)
+            reprocess_queue = deque()
 
-            adviser_repository = AdviserRepository(session)
+            for student_id, theme_id, suitability, interest in sorted_results:
+                heapq.heappush(theme_priority_queues[theme_id], (-suitability, student_id))
+                student_entries[student_id].append((suitability, theme_id, interest))
 
-            for theme_id, student_id, total_weighted_grade, interest_level in sorted_results:
+            all_themes = {theme for adv_themes in adviser_themes.values() for theme in adv_themes}
+            for theme_id in all_themes:
+                theme_advisers = [adv_id for adv_id in advisers if theme_id in adviser_themes[adv_id]]
+                theme_adviser_queue[theme_id] = deque(theme_advisers)
+
+            for student_id in student_entries:
                 if student_id in assigned_students:
                     continue
+                for interest_level in range(1, 6):
+                    themes = [
+                        (suit, theme, int_level)
+                        for suit, theme, int_level in student_entries[student_id]
+                        if int_level == interest_level
+                    ]
+                    if not themes:
+                        continue
+                    best_theme = max(themes, key=lambda x: x[0])[1]
+                    if self.assign_with_replacement(
+                            student_id,
+                            best_theme,
+                            themes[0][0],
+                            advisers,
+                            adviser_themes,
+                            theme_adviser_queue,
+                            adviser_assignments,
+                            theme_priority_queues,
+                            assigned_students,
+                            distributions,
+                            session,
+                            reprocess_queue
+                    ):
+                        break
 
-                student_interest = session.query(StudentThemeInterest).filter(
-                    StudentThemeInterest.student_id == student_id,
-                    StudentThemeInterest.theme_id == theme_id
-                ).first()
-
-                if not student_interest:
+            while reprocess_queue:
+                student_id = reprocess_queue.popleft()
+                if student_id in assigned_students:
                     continue
+                for interest_level in range(1, 6):
+                    themes = [
+                        (suit, theme, int_level)
+                        for suit, theme, int_level in student_entries[student_id]
+                        if int_level == interest_level
+                    ]
+                    if not themes:
+                        continue
+                    best_theme = max(themes, key=lambda x: x[0])[1]
+                    if self.assign_with_replacement(
+                            student_id,
+                            best_theme,
+                            themes[0][0],
+                            advisers,
+                            adviser_themes,
+                            theme_adviser_queue,
+                            adviser_assignments,
+                            theme_priority_queues,
+                            assigned_students,
+                            distributions,
+                            session,
+                            reprocess_queue
+                    ):
+                        break
 
-                if self.assign_student_to_adviser(student_id, theme_id, interest_level, advisers,
-                                                  adviser_themes, adviser_assignments, distributions_to_add, session,
-                                                  adviser_repository):
-                    assigned_students.add(student_id)
-                else:
-                    for new_interest_level in range(interest_level + 1, 6):
-                        alternative_themes = [
-                            interest.theme_id for interest in session.query(StudentThemeInterest).filter(
-                                StudentThemeInterest.student_id == student_id,
-                                StudentThemeInterest.interest_level == new_interest_level
-                            ).all()
-                        ]
+            all_students = {s.student_id for s in session.query(Student).all()}
+            unassigned_students = all_students - assigned_students
+            for student_id in unassigned_students:
+                available_themes = [theme_id for suit, theme_id, int_level in student_entries[student_id]]
+                available_advisers = []
+                for adv_id in adviser_themes:
+                    common_themes = set(adviser_themes[adv_id]) & set(available_themes)
+                    if common_themes and len(adviser_assignments[adv_id]) < advisers[adv_id].number_of_places:
+                        available_advisers.append(adv_id)
+                if available_advisers:
+                    best_adv = max(
+                        available_advisers,
+                        key=lambda x: (advisers[x].number_of_places - len(adviser_assignments[x]), x)
+                    )
+                    common_theme = next(theme for theme in adviser_themes[best_adv] if theme in available_themes)
+                    adviser_assignments[best_adv].append(student_id)
+                    distributions.append({
+                        "theme_id": common_theme,
+                        "student_id": student_id,
+                        "adviser_id": best_adv
+                    })
 
-                        for new_theme_id in alternative_themes:
-                            if student_id in assigned_students:
-                                break
-
-                            if self.assign_student_to_adviser(student_id, new_theme_id, new_interest_level, advisers,
-                                                              adviser_themes, adviser_assignments,
-                                                              distributions_to_add, session, adviser_repository):
-                                assigned_students.add(student_id)
-                                break
-
-                    if student_id not in assigned_students:
-                        unassigned_students.add(student_id)
-
-            self.distribution_repository.add_distribution(distributions_to_add)
-
-            all_students = session.query(Student).all()
-            for student in all_students:
-                if student.student_id not in assigned_students:
-                    unassigned_students.add(student.student_id)
+            self.distribution_repository.add_distribution(distributions)
 
         return unassigned_students
 
-    def assign_student_to_adviser(self, student_id, theme_id, interest_level, advisers, adviser_themes,
-                                  adviser_assignments, distributions_to_add, session, adviser_repository):
+    def assign_with_replacement(self, student_id, theme_id, suitability, advisers, adviser_themes,
+                                theme_adviser_queue, adviser_assignments, theme_priority_queues,
+                                assigned_students, distributions, session, reprocess_queue):
         available_advisers = [
-            adviser for adviser in advisers.values()
-            if adviser.number_of_places > 0 and
-               adviser_assignments[adviser.adviser_id] < adviser.number_of_places and
-               theme_id in adviser_themes[adviser.adviser_id]
+            adv_id for adv_id in theme_adviser_queue[theme_id]
+            if len(adviser_assignments[adv_id]) < advisers[adv_id].number_of_places
         ]
 
         if available_advisers:
-            available_advisers.sort(key=lambda x: x.number_of_places, reverse=True)
-            adviser = available_advisers[0]
+            while True:
+                adv_id = theme_adviser_queue[theme_id].popleft()
+                if len(adviser_assignments[adv_id]) < advisers[adv_id].number_of_places:
+                    theme_adviser_queue[theme_id].append(adv_id)
+                    break
+                theme_adviser_queue[theme_id].append(adv_id)
 
-            distribution_entry = {
+            adviser_assignments[adv_id].append(student_id)
+            heapq.heappush(theme_priority_queues[theme_id], (-suitability, student_id))
+            distributions.append({
                 "theme_id": theme_id,
                 "student_id": student_id,
-                "adviser_id": adviser.adviser_id,
-                "interest_level": interest_level
-            }
-
-            distributions_to_add.append(distribution_entry)
-            adviser_repository.decrease_adviser_places(adviser.adviser_id, session)
-
+                "adviser_id": adv_id
+            })
+            assigned_students.add(student_id)
             return True
-
+        else:
+            if theme_priority_queues[theme_id]:
+                lowest_suit, existing_student = heapq.heappop(theme_priority_queues[theme_id])
+                lowest_suit = -lowest_suit
+                if suitability > lowest_suit:
+                    for adv_id in adviser_assignments:
+                        if existing_student in adviser_assignments[adv_id]:
+                            adviser_assignments[adv_id].remove(existing_student)
+                            break
+                    adviser_assignments[adv_id].append(student_id)
+                    heapq.heappush(theme_priority_queues[theme_id], (-suitability, student_id))
+                    distributions.append({
+                        "theme_id": theme_id,
+                        "student_id": student_id,
+                        "adviser_id": adv_id
+                    })
+                    assigned_students.add(student_id)
+                    if existing_student not in assigned_students:
+                        reprocess_queue.append(existing_student)
+                    return True
+                else:
+                    heapq.heappush(theme_priority_queues[theme_id], (-lowest_suit, existing_student))
         return False
+
 
 class DistributionRepository(BaseRepository):
     def __init__(self, engine):
@@ -693,8 +760,3 @@ class DistributionRepository(BaseRepository):
             return False
         finally:
             session.close()
-
-    # def clear_all_distributions(self):
-    #     with self.Session() as session:
-    #         session.query(Distribution).delete()
-    #         session.commit()

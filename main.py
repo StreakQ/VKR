@@ -12,6 +12,7 @@ def main():
     Base.metadata.drop_all(engine)
     Base.metadata.create_all(engine)
 
+    # Создаем экземпляры репозиториев
     student_repository = StudentRepository(engine)
     subject_repository = SubjectRepository(engine)
     adviser_repository = AdviserRepository(engine)
@@ -24,6 +25,7 @@ def main():
     distribution_algorithm_repository = DistributionAlgorithmRepository(engine, student_subject_grade_repository, student_theme_interest_repository,
                                       theme_subject_importance_repository, adviser_theme_repository, distribution_repository)
 
+    # Очищаем репозитории
     student_repository.delete_all(Student)
     subject_repository.delete_all(Subject)
     adviser_repository.delete_all(Adviser)
@@ -40,6 +42,7 @@ def main():
     adviser_repository.add_initial_advisers()
     theme_repository.add_initial_themes()
 
+    # Получаем данные из репозиториев
     students = student_repository.get_all(Student)
     subjects = subject_repository.get_all(Subject)
     themes = theme_repository.get_all(Theme)
@@ -54,6 +57,7 @@ def main():
             weight = rnd.uniform(0.1, 1)
             theme_subject_importance_repository.add_theme_subject_importance(theme.theme_id, subject.subject_id, weight)
 
+    #добавление тем научным руководителям
     adviser_theme_repository.add_adviser_themes(1, *[1])
     adviser_theme_repository.add_adviser_themes(2, *[2])
     adviser_theme_repository.add_adviser_themes(3, *[3, 4])
@@ -73,11 +77,8 @@ def main():
 
     theme_subject_importance_repository.add_random_importances_for_themes(themes, subjects)
     student_theme_interest_repository.initialize_student_interests()
-    unassigned_students = distribution_algorithm_repository.assign_students_to_advisers_and_distribute()
-    return unassigned_students, student_repository, student_theme_interest_repository, adviser_repository
 
-
-    # # Выводим информацию
+    # Выводим информацию
     # print("Студенты:")
     # student_repository.display_all_students()
     # print("\nПредметы:")
@@ -92,77 +93,56 @@ def main():
     # adviser_theme_repository.display_all_adviser_themes()
     # print("\nВеса предметов по темам:")
     # theme_subject_importance_repository.display_all_theme_subject_importances()
-    #
-    # unassigned_students = distribution_algorithm_repository.assign_students_to_advisers_and_distribute()
-    #
-    # print("\nИтоговые распределения")
-    # distribution_repository.display_all_distributions()
-    #
-    #
-    # if unassigned_students:
-    #     print("\nНеназначенные студенты:")
-    #     check_unassigned_students(unassigned_students, adviser_repository, student_theme_interest_repository,
-    #                               student_repository)
-    #
-    # print("\nОставшиеся места после распределения")
-    # adviser_repository.display_all_advisers()
 
-# def check_unassigned_students(unassigned_students, adviser_repository, student_theme_interest_repository, student_repository):
-#     for student_id in unassigned_students:
-#         student = student_repository.get_by_id(Student,student_id,id_field='student_id')
-#         if student:
-#             print(f"\nСтудент ID: {student.student_id}, Имя: {student.firstname} {student.lastname}")
-#
-#             # Получаем темы, к которым у студента есть интересы
-#             selected_themes = student_theme_interest_repository.get_selected_themes_for_student(student.student_id)
-#             if selected_themes:
-#                 print("  Темы интересов:")
-#                 for theme in selected_themes:
-#                     print(f"    - Тема ID: {theme.theme_id}, Название: {theme.theme_name}")
-#             else:
-#                 print("  У студента нет тем интересов.")
-#
-#             # Проверяем наличие научных советников для выбранных тем
-#             for theme in selected_themes:
-#                 advisers = adviser_repository.get_advisers_for_theme(theme.theme_id)
-#                 if not advisers:
-#                     print(f"  Нет научных советников для темы ID: {theme.theme_id}")
-#                 else:
-#                     for adviser in advisers:
-#                         print(f"  Научный советник ID: {adviser.adviser_id} доступен для темы ID: {theme.theme_id} "
-#                               f"(оставшиеся места: {adviser.number_of_places})")
-#                         if adviser.number_of_places <= 0:
-#                             print(f"  У научного советника ID: {adviser.adviser_id} нет свободных мест для темы ID: {theme.theme_id}")
+    unassigned_students = distribution_algorithm_repository.assign_students_to_advisers_and_distribute()
 
-def check_unassigned_students(unassigned_students, student_repository, student_theme_interest_repository):
-    results = []
+    print("\nИтоговые распределения")
+    distribution_repository.display_all_distributions()
+
+
+    if unassigned_students:
+        print("\nНеназначенные студенты:")
+        check_unassigned_students(unassigned_students, adviser_repository, student_theme_interest_repository,
+                                  student_repository)
+
+    print("\nОставшиеся места после распределения")
+    adviser_repository.display_all_advisers()
+
+def check_unassigned_students(unassigned_students, adviser_repository, student_theme_interest_repository, student_repository):
     for student_id in unassigned_students:
-        student = student_repository.get_by_id(Student, student_id, id_field='student_id')
+        student = student_repository.get_by_id(Student,student_id,id_field='student_id')
         if student:
-            student_info = {
-                'student_id': student.student_id,
-                'name': f"{student.firstname} {student.lastname}",
-                'themes': []
-            }
+            print(f"\nСтудент ID: {student.student_id}, Имя: {student.firstname} {student.lastname}")
 
-                # Получаем темы, к которым у студента есть интересы
+            # Получаем темы, к которым у студента есть интересы
             selected_themes = student_theme_interest_repository.get_selected_themes_for_student(student.student_id)
             if selected_themes:
+                print("  Темы интересов:")
                 for theme in selected_themes:
-                    student_info['themes'].append({
-                        'theme_id': theme.theme_id,
-                        'theme_name': theme.theme_name
-                    })
-            results.append(student_info)
-    return results
+                    print(f"    - Тема ID: {theme.theme_id}, Название: {theme.theme_name}")
+            else:
+                print("  У студента нет тем интересов.")
+
+            # Проверяем наличие научных советников для выбранных тем
+            for theme in selected_themes:
+                advisers = adviser_repository.get_advisers_for_theme(theme.theme_id)
+                if not advisers:
+                    print(f"  Нет научных советников для темы ID: {theme.theme_id}")
+                else:
+                    for adviser in advisers:
+                        print(f"  Научный советник ID: {adviser.adviser_id} доступен для темы ID: {theme.theme_id} "
+                              f"(оставшиеся места: {adviser.number_of_places})")
+                        if adviser.number_of_places <= 0:
+                            print(f"  У научного советника ID: {adviser.adviser_id} нет свободных мест для темы ID: {theme.theme_id}")
+
 
 if __name__ == "__main__":
     main()
 
-#TODO 1: Вынести алгоритм из класса
-#TODO 2: упростить алгоритм, разбив его на несколько функций
-#TODO 3: Изменить алгоритм так, чтобы он учитывал оба фактора распределения
+#TODO 2: не распределяются полностью студенты с полностью заполненными темами
+#TODO 3: Изменить алгоритм так, чтобы он учитывал оба фактора распределения(сначала временно назначаем по интересу а потом обращаем внимание на
+# подходимость студента к теме и изменять очередь)
 #TODO 4: Дополнить таблицы в веб-интерфейсе различными функциями
 #TODO 5: настроить методы доступа к веб-интерфейсу( авторизация аутентификация и тд)
-# TODO 6: в вебе должен быть также переход между таблицами помимо перехода на главную
 # TODO 7: создать страницу для сбора информации у студентов
+# TODO 8: таблица для задания весов
