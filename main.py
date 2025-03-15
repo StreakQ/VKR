@@ -37,7 +37,7 @@ def main():
     distribution_repository.delete_all(Distribution)
 
     # Добавляем начальные данные
-    student_repository.add_initial_students(50)
+    student_repository.add_initial_students(30)
     subject_repository.add_initial_subjects()
     adviser_repository.add_initial_advisers()
     theme_repository.add_initial_themes()

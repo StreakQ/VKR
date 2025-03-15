@@ -126,15 +126,23 @@ class AdviserRepository(BaseRepository):
 
     def decrease_adviser_places(self, adviser_id, session):
         adviser_record = self.get_by_adviser_id(adviser_id, session)
-        if adviser_record and adviser_record.number_of_places > 0:
+        if adviser_record and adviser_record.number_of_places > 0:  # Уменьшаем до 0
+            print(f"Старое значение мест у ID {adviser_id}: {adviser_record.number_of_places}")
             adviser_record.number_of_places -= 1
             session.commit()
+            print(f"Новое значение мест у ID {adviser_id}: {adviser_record.number_of_places}")
+        else:
+            print(f"Не удалось уменьшить количество мест у ID {adviser_id}. Минимум 0 мест.")
 
-    def increase_adviser_places(self, adviser_id, session):
+    def increase_adviser_places(self, adviser_id, session, initial_number_of_places):
         adviser_record = self.get_by_adviser_id(adviser_id, session)
-        if adviser_record:
+        if adviser_record and adviser_record.number_of_places < initial_number_of_places:
+            print(
+                f"Увеличиваем места у ID {adviser_id}: {adviser_record.number_of_places} -> {adviser_record.number_of_places + 1}")
             adviser_record.number_of_places += 1
             session.commit()
+        else:
+            print(f"Не удалось увеличить количество мест у ID {adviser_id}. Максимум {initial_number_of_places} места.")
 
     def get_by_adviser_id(self, adviser_id, session):
         return session.query(Adviser).filter(Adviser.adviser_id == adviser_id).first()
@@ -521,132 +529,103 @@ class DistributionAlgorithmRepository(BaseRepository):
 
         return sorted_results  # Возвращаем отсортированные результаты
 
-    def assign_students_to_advisers_and_distribute(self):
-        sorted_results = self.link_weighted_grades_with_interest()
-        unassigned_students = set()
+    def assign_students_to_advisers_and_distribute(self, session, reprocess_queue):
+        # Получаем все данные из базы
+        all_students = {s.student_id for s in session.query(Student).all()}
+        advisers = {a.adviser_id: a for a in session.query(Adviser).all()}
+        adviser_themes = {
+            adv_id: [t.theme_id for t in session.query(Theme).filter(Theme.adviser_id == adv_id).all()]
+            for adv_id in advisers
+        }
+        student_entries = {
+            s.student_id: [
+                (e.suitability, e.theme_id, e.interest_level)
+                for e in
+                session.query(StudentThemeInterest).filter(StudentThemeInterest.student_id == s.student_id).all()
+            ]
+            for s in session.query(Student).all()
+        }
+
+        # Инициализация структур данных
+        adviser_assignments = {adv_id: [] for adv_id in advisers}
+        theme_priority_queues = defaultdict(list)
         assigned_students = set()
         distributions = []
 
-        with self.Session() as session:
-            advisers = {adv.adviser_id: adv for adv in session.query(Adviser).all()}
-            adviser_themes = defaultdict(list)
-            for adv_theme in session.query(AdviserTheme).all():
-                adviser_themes[adv_theme.adviser_id].append(adv_theme.theme_id)
+        # Первичное распределение
+        for student_id in all_students:
+            themes_sorted = sorted(
+                student_entries[student_id],
+                key=lambda x: (x[2], -x[0]),  # Сначала по интересу, потом по пригодности
+                reverse=True
+            )
 
-            adviser_assignments = defaultdict(list)
-            theme_adviser_queue = defaultdict(deque)
-            theme_priority_queues = defaultdict(list)
-            student_entries = defaultdict(list)
-            reprocess_queue = deque()
+            for suitability, theme_id, interest_level in themes_sorted:
+                if self.assign_with_replacement(
+                        student_id, theme_id, suitability, advisers, adviser_themes,
+                        theme_adviser_queue, adviser_assignments, theme_priority_queues,
+                        assigned_students, distributions, session, reprocess_queue
+                ):
+                    break
 
-            for student_id, theme_id, suitability, interest in sorted_results:
-                heapq.heappush(theme_priority_queues[theme_id], (-suitability, student_id))
-                student_entries[student_id].append((suitability, theme_id, interest))
+        # Обработка вытесненных студентов
+        while reprocess_queue:
+            student_id = reprocess_queue.popleft()
+            if student_id in assigned_students:
+                continue
 
-            all_themes = {theme for adv_themes in adviser_themes.values() for theme in adv_themes}
-            for theme_id in all_themes:
-                theme_advisers = [adv_id for adv_id in advisers if theme_id in adviser_themes[adv_id]]
-                theme_adviser_queue[theme_id] = deque(theme_advisers)
+            themes_sorted = sorted(
+                student_entries[student_id],
+                key=lambda x: (x[2], -x[0]),  # Сначала по интересу, потом по пригодности
+                reverse=True
+            )
 
-            for student_id in student_entries:
-                if student_id in assigned_students:
-                    continue
-                for interest_level in range(1, 6):
-                    themes = [
-                        (suit, theme, int_level)
-                        for suit, theme, int_level in student_entries[student_id]
-                        if int_level == interest_level
-                    ]
-                    if not themes:
-                        continue
-                    best_theme = max(themes, key=lambda x: x[0])[1]
-                    if self.assign_with_replacement(
-                            student_id,
-                            best_theme,
-                            themes[0][0],
-                            advisers,
-                            adviser_themes,
-                            theme_adviser_queue,
-                            adviser_assignments,
-                            theme_priority_queues,
-                            assigned_students,
-                            distributions,
-                            session,
-                            reprocess_queue
-                    ):
-                        break
+            for suitability, theme_id, interest_level in themes_sorted:
+                if self.assign_with_replacement(
+                        student_id, theme_id, suitability, advisers, adviser_themes,
+                        theme_adviser_queue, adviser_assignments, theme_priority_queues,
+                        assigned_students, distributions, session, reprocess_queue
+                ):
+                    break
 
-            while reprocess_queue:
-                student_id = reprocess_queue.popleft()
-                if student_id in assigned_students:
-                    continue
-                for interest_level in range(1, 6):
-                    themes = [
-                        (suit, theme, int_level)
-                        for suit, theme, int_level in student_entries[student_id]
-                        if int_level == interest_level
-                    ]
-                    if not themes:
-                        continue
-                    best_theme = max(themes, key=lambda x: x[0])[1]
-                    if self.assign_with_replacement(
-                            student_id,
-                            best_theme,
-                            themes[0][0],
-                            advisers,
-                            adviser_themes,
-                            theme_adviser_queue,
-                            adviser_assignments,
-                            theme_priority_queues,
-                            assigned_students,
-                            distributions,
-                            session,
-                            reprocess_queue
-                    ):
-                        break
+        # Фолбэк для оставшихся студентов
+        unassigned_students = all_students - assigned_students
+        for student_id in unassigned_students.copy():
+            themes_sorted = sorted(
+                student_entries[student_id],
+                key=lambda x: (x[2], -x[0]),  # Сначала по интересу, потом по пригодности
+                reverse=True
+            )
 
-            all_students = {s.student_id for s in session.query(Student).all()}
-            unassigned_students = all_students - assigned_students
-            for student_id in unassigned_students:
-                available_themes = [theme_id for suit, theme_id, int_level in student_entries[student_id]]
-                available_advisers = []
-                for adv_id in adviser_themes:
-                    common_themes = set(adviser_themes[adv_id]) & set(available_themes)
-                    if common_themes and len(adviser_assignments[adv_id]) < advisers[adv_id].number_of_places:
-                        available_advisers.append(adv_id)
-                if available_advisers:
-                    best_adv = max(
-                        available_advisers,
-                        key=lambda x: (advisers[x].number_of_places - len(adviser_assignments[x]), x)
-                    )
-                    common_theme = next(theme for theme in adviser_themes[best_adv] if theme in available_themes)
-                    adviser_assignments[best_adv].append(student_id)
-                    distributions.append({
-                        "theme_id": common_theme,
-                        "student_id": student_id,
-                        "adviser_id": best_adv
-                    })
+            for suitability, theme_id, interest_level in themes_sorted:
+                if self.assign_with_replacement(
+                        student_id, theme_id, suitability, advisers, adviser_themes,
+                        theme_adviser_queue, adviser_assignments, theme_priority_queues,
+                        assigned_students, distributions, session, reprocess_queue
+                ):
+                    break
 
-            self.distribution_repository.add_distribution(distributions)
-
-        return unassigned_students
+        return assigned_students, distributions
 
     def assign_with_replacement(self, student_id, theme_id, suitability, advisers, adviser_themes,
                                 theme_adviser_queue, adviser_assignments, theme_priority_queues,
                                 assigned_students, distributions, session, reprocess_queue):
+        # Проверяем доступных руководителей
         available_advisers = [
             adv_id for adv_id in theme_adviser_queue[theme_id]
             if len(adviser_assignments[adv_id]) < advisers[adv_id].number_of_places
         ]
 
         if available_advisers:
-            while True:
-                adv_id = theme_adviser_queue[theme_id].popleft()
+            # Выбираем первого доступного руководителя
+            for adv_id in theme_adviser_queue[theme_id]:
                 if len(adviser_assignments[adv_id]) < advisers[adv_id].number_of_places:
-                    theme_adviser_queue[theme_id].append(adv_id)
                     break
-                theme_adviser_queue[theme_id].append(adv_id)
+            else:
+                # Если нет доступных руководителей, выходим
+                return False
 
+            # Обновляем назначения
             adviser_assignments[adv_id].append(student_id)
             heapq.heappush(theme_priority_queues[theme_id], (-suitability, student_id))
             distributions.append({
@@ -655,16 +634,48 @@ class DistributionAlgorithmRepository(BaseRepository):
                 "adviser_id": adv_id
             })
             assigned_students.add(student_id)
+
+            # Уменьшаем количество мест у научного руководителя
+            current_adviser = session.query(Adviser).get(adv_id)
+            print(f"Старое значение мест у ID {adv_id}: {current_adviser.number_of_places}")
+            current_adviser.number_of_places -= 1
+            session.commit()
+            print(f"Новое значение мест у ID {adv_id}: {current_adviser.number_of_places}")
+
             return True
         else:
             if theme_priority_queues[theme_id]:
                 lowest_suit, existing_student = heapq.heappop(theme_priority_queues[theme_id])
                 lowest_suit = -lowest_suit
                 if suitability > lowest_suit:
-                    for adv_id in adviser_assignments:
-                        if existing_student in adviser_assignments[adv_id]:
-                            adviser_assignments[adv_id].remove(existing_student)
+                    print(f"Новый студент ID {student_id} имеет более высокую пригодность ({suitability})")
+
+                    # Находим старого руководителя
+                    old_adv_id = None
+                    for adv_id, students in adviser_assignments.items():
+                        if existing_student in students:
+                            old_adv_id = adv_id
+                            students.remove(existing_student)
                             break
+
+                    if old_adv_id is None:
+                        # Если старый руководитель не найден, выходим
+                        return False
+
+                    # Корректируем количество мест
+                    old_adviser = session.query(Adviser).get(old_adv_id)
+                    new_adviser = session.query(Adviser).get(adv_id)
+                    print(f"Старое значение мест у ID {old_adv_id}: {old_adviser.number_of_places}")
+                    old_adviser.number_of_places += 1
+                    print(f"Новое значение мест у ID {old_adv_id}: {old_adviser.number_of_places}")
+
+                    print(f"Старое значение мест у ID {adv_id}: {new_adviser.number_of_places}")
+                    new_adviser.number_of_places -= 1
+                    print(f"Новое значение мест у ID {adv_id}: {new_adviser.number_of_places}")
+
+                    session.commit()
+
+                    # Обновляем назначения
                     adviser_assignments[adv_id].append(student_id)
                     heapq.heappush(theme_priority_queues[theme_id], (-suitability, student_id))
                     distributions.append({
@@ -673,12 +684,16 @@ class DistributionAlgorithmRepository(BaseRepository):
                         "adviser_id": adv_id
                     })
                     assigned_students.add(student_id)
+
                     if existing_student not in assigned_students:
                         reprocess_queue.append(existing_student)
+                        print(f"Студент ID {existing_student} добавлен в очередь на повторное распределение")
                     return True
                 else:
                     heapq.heappush(theme_priority_queues[theme_id], (-lowest_suit, existing_student))
-        return False
+            else:
+                print(f"Очередь приоритетов для темы ID {theme_id} пуста")
+                return False
 
 
 class DistributionRepository(BaseRepository):
