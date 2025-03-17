@@ -12,6 +12,7 @@ from collections import defaultdict, deque
 import heapq
 
 fake = Faker('ru_RU')
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
 class BaseRepository:
     def __init__(self, engine):
@@ -575,10 +576,14 @@ class DistributionAlgorithmRepository(BaseRepository):
 
         return theme_priority_queues, student_entries
 
-    def assign_students(self, student_entries, advisers, adviser_themes, theme_priority_queues, adviser_assignments):
+    def assign_students(self, student_entries, advisers, adviser_themes, theme_priority_queues, adviser_assignments,
+                        session=None):
         """
         Основной цикл для распределения студентов по научным руководителям и темам.
         """
+        if session is None:
+            raise ValueError("Session должна быть передана для обновления данных в базе.")
+
         assigned_students = set()
         distributions = []
         reprocess_queue = deque()
@@ -602,24 +607,26 @@ class DistributionAlgorithmRepository(BaseRepository):
                         advisers,
                         adviser_themes,
                         theme_priority_queues,
-                        adviser_assignments,  # Передаем adviser_assignments
+                        adviser_assignments,
                         assigned_students,
                         distributions,
-                        reprocess_queue
+                        reprocess_queue,
+                        session=session  # Передаем session
                 ):
                     break
-
         return assigned_students, distributions, reprocess_queue
 
-    def process_reprocess_queue(self, reprocess_queue, student_entries, advisers, adviser_themes, theme_priority_queues,
-                                assigned_students, distributions, adviser_assignments):  # Добавляем adviser_assignments
-        """
-        Обрабатывает студентов, которые не были распределены с первого раза.
-        """
+    def process_reprocess_queue(self, reprocess_queue, student_entries, advisers, adviser_themes,
+                                theme_priority_queues, assigned_students, distributions, adviser_assignments,
+                                session=None):
+        if session is None:
+            raise ValueError("Session должна быть передана для обновления данных в базе.")
+
         while reprocess_queue:
             student_id = reprocess_queue.popleft()
             if student_id in assigned_students:
                 continue
+
             for interest_level in range(1, 6):
                 themes = [
                     (suit, theme, int_level)
@@ -628,6 +635,7 @@ class DistributionAlgorithmRepository(BaseRepository):
                 ]
                 if not themes:
                     continue
+
                 best_theme = max(themes, key=lambda x: x[0])[1]
                 if self.assign_with_replacement(
                         student_id,
@@ -636,36 +644,27 @@ class DistributionAlgorithmRepository(BaseRepository):
                         advisers,
                         adviser_themes,
                         theme_priority_queues,
-                        adviser_assignments,  # Передаем adviser_assignments
+                        adviser_assignments,
                         assigned_students,
                         distributions,
-                        reprocess_queue
+                        session=session
                 ):
                     break
 
     def assign_with_replacement(self, student_id, theme_id, suitability, advisers, adviser_themes,
                                 theme_priority_queues, adviser_assignments, assigned_students, distributions,
-                                reprocess_queue=None):
-        """
-        Назначает студента на тему с возможностью замены менее подходящего студента.
-        """
-        print(f"Тип adviser_assignments: {type(adviser_assignments)}")
-
+                                reprocess_queue=None, session=None):
         if reprocess_queue is None:
             reprocess_queue = deque()
-
-        # Проверка типа данных adviser_assignments
-        if not isinstance(adviser_assignments, dict):
-            raise TypeError("adviser_assignments должен быть словарем")
+        if session is None:
+            raise ValueError("Session должна быть передана для обновления данных в базе.")
 
         available_advisers = [
             adv_id for adv_id in adviser_themes
-            if
-            theme_id in adviser_themes[adv_id] and len(adviser_assignments[adv_id]) < advisers[adv_id].number_of_places
+            if theme_id in adviser_themes[adv_id] and advisers[adv_id].number_of_places > 0
         ]
 
         if available_advisers:
-            # Находим доступного научного руководителя
             adv_id = available_advisers[0]
             adviser_assignments[adv_id].append(student_id)
             heapq.heappush(theme_priority_queues[theme_id], (-suitability, student_id))
@@ -675,17 +674,36 @@ class DistributionAlgorithmRepository(BaseRepository):
                 "adviser_id": adv_id
             })
             assigned_students.add(student_id)
+
+            # Уменьшаем число мест у научного руководителя
+            adviser = advisers[adv_id]
+            adviser.number_of_places -= 1
+            session.commit()
+
             return True
         else:
-            # Проверяем возможность замены менее подходящего студента
             if theme_priority_queues[theme_id]:
                 lowest_suit, existing_student = heapq.heappop(theme_priority_queues[theme_id])
                 lowest_suit = -lowest_suit
                 if suitability > lowest_suit:
+                    replaced_adv_id = None
                     for adv_id in adviser_assignments:
                         if existing_student in adviser_assignments[adv_id]:
                             adviser_assignments[adv_id].remove(existing_student)
+                            replaced_adv_id = adv_id
                             break
+
+                    if replaced_adv_id is not None:
+                        # Восстанавливаем место для старого научного руководителя
+                        replaced_adviser = advisers[replaced_adv_id]
+                        replaced_adviser.number_of_places += 1
+                        session.commit()
+
+                    # Назначаем нового студента
+                    adv_id = next(
+                        adv_id for adv_id in adviser_assignments
+                        if existing_student in adviser_assignments[adv_id]
+                    )
                     adviser_assignments[adv_id].append(student_id)
                     heapq.heappush(theme_priority_queues[theme_id], (-suitability, student_id))
                     distributions.append({
@@ -694,6 +712,12 @@ class DistributionAlgorithmRepository(BaseRepository):
                         "adviser_id": adv_id
                     })
                     assigned_students.add(student_id)
+
+                    # Уменьшаем число мест у нового научного руководителя
+                    adviser = advisers[adv_id]
+                    adviser.number_of_places -= 1
+                    session.commit()
+
                     if existing_student not in assigned_students:
                         reprocess_queue.append(existing_student)
                     return True
@@ -701,23 +725,22 @@ class DistributionAlgorithmRepository(BaseRepository):
                     heapq.heappush(theme_priority_queues[theme_id], (-lowest_suit, existing_student))
         return False
 
-
     def handle_unassigned_students(self, unassigned_students, student_entries, advisers, adviser_themes,
-                                   adviser_assignments, distributions):
-        """
-        Обрабатывает студентов, которые остались нераспределенными.
-        """
+                                   adviser_assignments, distributions, session=None):
+        if session is None:
+            raise ValueError("Session должна быть передана для обновления данных в базе.")
+
         for student_id in unassigned_students:
             available_themes = [theme_id for suit, theme_id, int_level in student_entries[student_id]]
             available_advisers = [
                 adv_id for adv_id in adviser_themes
-                if set(adviser_themes[adv_id]) & set(available_themes) and len(adviser_assignments[adv_id]) < advisers[
-                    adv_id].number_of_places
+                if set(adviser_themes[adv_id]) & set(available_themes) and advisers[adv_id].number_of_places > 0
             ]
+
             if available_advisers:
                 best_adv = max(
                     available_advisers,
-                    key=lambda x: (advisers[x].number_of_places - len(adviser_assignments[x]), x)
+                    key=lambda x: (advisers[x].number_of_places, x)
                 )
                 common_theme = next(theme for theme in adviser_themes[best_adv] if theme in available_themes)
                 adviser_assignments[best_adv].append(student_id)
@@ -727,36 +750,60 @@ class DistributionAlgorithmRepository(BaseRepository):
                     "adviser_id": best_adv
                 })
 
+                # Уменьшаем число мест у научного руководителя
+                adviser = advisers[best_adv]
+                adviser.number_of_places -= 1
+                session.commit()
+
     def assign_students_to_advisers_and_distribute(self):
         """
         Главный метод для распределения студентов по научным руководителям и темам.
         """
         sorted_results = self.link_weighted_grades_with_interest()
-        advisers, adviser_themes = self.prepare_advisers_and_themes()
-        theme_priority_queues, student_entries = self.create_priority_queues(sorted_results)
-        adviser_assignments = defaultdict(list)  # Создаем adviser_assignments
+        logging.debug(f"Отсортированные результаты соответствия: {sorted_results}")
 
-        # Вызываем assign_students с adviser_assignments
-        assigned_students, distributions, reprocess_queue = self.assign_students(
-            student_entries, advisers, adviser_themes, theme_priority_queues, adviser_assignments
-        )
+        with self.Session() as session:
+            advisers, adviser_themes = self.prepare_advisers_and_themes()
+            theme_priority_queues, student_entries = self.create_priority_queues(sorted_results)
+            adviser_assignments = defaultdict(list)
 
-        # Вызываем process_reprocess_queue с adviser_assignments
-        self.process_reprocess_queue(
-            reprocess_queue, student_entries, advisers, adviser_themes, theme_priority_queues, assigned_students,
-            distributions, adviser_assignments
-        )
+            # Логирование начального состояния scientific advisers
+            logging.debug("Начальное состояние научных руководителей:")
+            for adv_id, adviser in advisers.items():
+                logging.debug(f"ID Руководителя: {adv_id}, Мест: {adviser.number_of_places}")
 
-        all_students = {s.student_id for s in self.get_all(Student)}
-        unassigned_students = all_students - assigned_students
+            assigned_students, distributions, reprocess_queue = self.assign_students(
+                student_entries, advisers, adviser_themes, theme_priority_queues, adviser_assignments, session
+            )
 
-        # Обрабатываем нераспределенных студентов
-        self.handle_unassigned_students(unassigned_students, student_entries, advisers, adviser_themes,
-                                        adviser_assignments, distributions)
+            # Логирование после первого этапа распределения
+            logging.debug("Состояние после первого этапа распределения:")
+            for adv_id, adviser in advisers.items():
+                logging.debug(f"ID Руководителя: {adv_id}, Мест: {adviser.number_of_places}")
 
-        # Сохраняем распределения
-        self.distribution_repository.add_distribution(distributions)
-        return unassigned_students
+            self.process_reprocess_queue(
+                reprocess_queue, student_entries, advisers, adviser_themes, theme_priority_queues, assigned_students,
+                distributions, adviser_assignments, session
+            )
+
+            # Логирование после обработки очереди повторной обработки
+            logging.debug("Состояние после обработки очереди повторной обработки:")
+            for adv_id, adviser in advisers.items():
+                logging.debug(f"ID Руководителя: {adv_id}, Мест: {adviser.number_of_places}")
+
+            all_students = {s.student_id for s in self.get_all(Student)}
+            unassigned_students = all_students - assigned_students
+
+            self.handle_unassigned_students(unassigned_students, student_entries, advisers, adviser_themes,
+                                            adviser_assignments, distributions, session)
+
+            # Логирование финального состояния scientific advisers
+            logging.debug("Финальное состояние научных руководителей:")
+            for adv_id, adviser in advisers.items():
+                logging.debug(f"ID Руководителя: {adv_id}, Мест: {adviser.number_of_places}")
+
+            self.distribution_repository.add_distribution(distributions)
+            return unassigned_students
 
 
 class DistributionRepository(BaseRepository):
@@ -789,21 +836,16 @@ class DistributionRepository(BaseRepository):
     def display_all_distributions(self):
         with self.Session() as session:
             try:
-                # Выполняем запрос к таблице Distribution с сортировкой
-                #all_distributions = session.query(Distribution).order_by(Distribution.distribution_id).all()
-                all_distributions = session.query(Distribution).order_by(Distribution.student_id).all()
-
-
+                all_distributions = session.query(Distribution).order_by(
+                    Distribution.distribution_id).all()  # Сортировка по первому ключу
                 if not all_distributions:
                     print("Данных нет")
                     return  # Выход из метода, если данных нет
-
                 for distribution in all_distributions:
                     print(f"ID: {distribution.distribution_id}, "
                           f"Студент ID: {distribution.student_id}, "
                           f"Тема ID: {distribution.theme_id}, "
                           f"Научный руководитель ID: {distribution.adviser_id}")
-                          #f" Уровень интереса {distribution.interest_level}")
             except Exception as e:
                 logging.error(f"Ошибка при получении распределений: {e}")
 
