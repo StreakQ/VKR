@@ -37,7 +37,7 @@ def main():
     distribution_repository.delete_all(Distribution)
 
     # Добавляем начальные данные
-    student_repository.add_initial_students(30)
+    student_repository.add_initial_students(50)
     subject_repository.add_initial_subjects()
     adviser_repository.add_initial_advisers()
     theme_repository.add_initial_themes()
@@ -139,9 +139,8 @@ def check_unassigned_students(unassigned_students, adviser_repository, student_t
 if __name__ == "__main__":
     main()
 
-#TODO 2: не распределяются полностью студенты с полностью заполненными темами
-#TODO 3: Изменить алгоритм так, чтобы он учитывал оба фактора распределения(сначала временно назначаем по интересу а потом обращаем внимание на
-# подходимость студента к теме и изменять очередь)
+#TODO 2: не распределяются полностью студенты с полностью заполненными темами( кидать к наиболее свободному преподу)
+
 #TODO 4: Дополнить таблицы в веб-интерфейсе различными функциями
 #TODO 5: настроить методы доступа к веб-интерфейсу( авторизация аутентификация и тд)
 # TODO 7: создать страницу для сбора информации у студентов

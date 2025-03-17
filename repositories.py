@@ -756,54 +756,62 @@ class DistributionAlgorithmRepository(BaseRepository):
                 session.commit()
 
     def assign_students_to_advisers_and_distribute(self):
-        """
-        Главный метод для распределения студентов по научным руководителям и темам.
-        """
         sorted_results = self.link_weighted_grades_with_interest()
-        logging.debug(f"Отсортированные результаты соответствия: {sorted_results}")
-
         with self.Session() as session:
             advisers, adviser_themes = self.prepare_advisers_and_themes()
             theme_priority_queues, student_entries = self.create_priority_queues(sorted_results)
             adviser_assignments = defaultdict(list)
 
-            # Логирование начального состояния scientific advisers
-            logging.debug("Начальное состояние научных руководителей:")
-            for adv_id, adviser in advisers.items():
-                logging.debug(f"ID Руководителя: {adv_id}, Мест: {adviser.number_of_places}")
-
+            # Распределение студентов
             assigned_students, distributions, reprocess_queue = self.assign_students(
                 student_entries, advisers, adviser_themes, theme_priority_queues, adviser_assignments, session
             )
 
-            # Логирование после первого этапа распределения
-            logging.debug("Состояние после первого этапа распределения:")
-            for adv_id, adviser in advisers.items():
-                logging.debug(f"ID Руководителя: {adv_id}, Мест: {adviser.number_of_places}")
-
+            # Обработка очереди повторной обработки
             self.process_reprocess_queue(
                 reprocess_queue, student_entries, advisers, adviser_themes, theme_priority_queues, assigned_students,
                 distributions, adviser_assignments, session
             )
 
-            # Логирование после обработки очереди повторной обработки
-            logging.debug("Состояние после обработки очереди повторной обработки:")
-            for adv_id, adviser in advisers.items():
-                logging.debug(f"ID Руководителя: {adv_id}, Мест: {adviser.number_of_places}")
-
             all_students = {s.student_id for s in self.get_all(Student)}
             unassigned_students = all_students - assigned_students
 
+            # Обработка нераспределенных студентов
             self.handle_unassigned_students(unassigned_students, student_entries, advisers, adviser_themes,
                                             adviser_assignments, distributions, session)
 
-            # Логирование финального состояния scientific advisers
+            # Сохраняем распределения
+            self.distribution_repository.add_distribution(distributions)
+
+            # Синхронизируем количество мест у научных руководителей в базе данных
+            self.finalize_adviser_places(advisers, session=session)
+
+            # Логирование финального состояния
             logging.debug("Финальное состояние научных руководителей:")
             for adv_id, adviser in advisers.items():
                 logging.debug(f"ID Руководителя: {adv_id}, Мест: {adviser.number_of_places}")
 
-            self.distribution_repository.add_distribution(distributions)
             return unassigned_students
+
+    def finalize_adviser_places(self, advisers, session=None):
+        """
+        Синхронизирует количество мест у научных руководителей в базе данных.
+        """
+        if session is None:
+            raise ValueError("Session должна быть передана для обновления данных в базе.")
+
+        try:
+            for adv_id, adviser in advisers.items():
+                # Обновляем поле number_of_places в базе данных
+                db_adviser = session.query(Adviser).get(adv_id)
+                if db_adviser:
+                    db_adviser.number_of_places = adviser.number_of_places
+                    logging.debug(
+                        f"Обновлено количество мест для Научного руководителя ID: {adv_id}, Мест: {adviser.number_of_places}")
+            session.commit()
+        except Exception as e:
+            session.rollback()
+            logging.error(f"Ошибка при обновлении количества мест у научных руководителей: {e}")
 
 
 class DistributionRepository(BaseRepository):
