@@ -750,10 +750,14 @@ class DistributionAlgorithmRepository(BaseRepository):
                     "adviser_id": best_adv
                 })
 
+                remain_students = unassigned_students - student_id
+
                 # Уменьшаем число мест у научного руководителя
                 adviser = advisers[best_adv]
                 adviser.number_of_places -= 1
                 session.commit()
+
+        
 
     def assign_students_to_advisers_and_distribute(self):
         sorted_results = self.link_weighted_grades_with_interest()
@@ -777,8 +781,13 @@ class DistributionAlgorithmRepository(BaseRepository):
             unassigned_students = all_students - assigned_students
 
             # Обработка нераспределенных студентов
-            self.handle_unassigned_students(unassigned_students, student_entries, advisers, adviser_themes,
+            remain_students = self.handle_unassigned_students(unassigned_students, student_entries, advisers, adviser_themes,
                                             adviser_assignments, distributions, session)
+
+
+
+            # self.handle_overbooked_students(remain_students, student_entries, advisers, adviser_themes,
+            #                                 adviser_assignments, distributions, session)
 
             # Сохраняем распределения
             self.distribution_repository.add_distribution(distributions)
@@ -813,6 +822,69 @@ class DistributionAlgorithmRepository(BaseRepository):
             session.rollback()
             logging.error(f"Ошибка при обновлении количества мест у научных руководителей: {e}")
 
+    def handle_overbooked_students(self, unassigned_students, student_entries, advisers, adviser_themes,
+                                   adviser_assignments, distributions, session=None):
+        """
+        Обрабатывает студентов, у которых все темы заняты, назначая их к наиболее свободному научному руководителю.
+        """
+        if session is None:
+            raise ValueError("Session должна быть передана для обновления данных в базе.")
+
+        for student_id in unassigned_students:
+            available_themes = [theme_id for suit, theme_id, int_level in student_entries[student_id]]
+            available_advisers = [
+                adv_id for adv_id in adviser_themes
+                if set(adviser_themes[adv_id]) & set(available_themes) and advisers[adv_id].number_of_places > 0
+            ]
+
+            if not available_advisers:
+                # Все темы заняты, ищем наиболее свободного научного руководителя
+                most_available_adviser = max(
+                    advisers.values(),
+                    key=lambda adv: (adv.number_of_places, adv.adviser_id)
+                )
+
+                if most_available_adviser.number_of_places > 0:
+                    # Выбираем любую тему, связанную с этим научным руководителем
+                    common_theme = next(theme for theme in adviser_themes[most_available_adviser.adviser_id])
+                    adviser_assignments[most_available_adviser.adviser_id].append(student_id)
+                    distributions.append({
+                        "theme_id": common_theme,
+                        "student_id": student_id,
+                        "adviser_id": most_available_adviser.adviser_id
+                    })
+
+                    # Уменьшаем число мест у научного руководителя
+                    most_available_adviser.number_of_places -= 1
+                    session.commit()
+
+                    logging.info(
+                        f"Студент ID: {student_id} назначен Научному руководителю ID: {most_available_adviser.adviser_id}, "
+                        f"Тема ID: {common_theme}")
+                else:
+                    logging.warning(
+                        f"Невозможно назначить Студента ID: {student_id}, нет свободных мест ни у одного научного руководителя.")
+            else:
+                # Есть доступные места для тем студента
+                best_adv = max(
+                    available_advisers,
+                    key=lambda x: (advisers[x].number_of_places, x)
+                )
+                common_theme = next(theme for theme in adviser_themes[best_adv] if theme in available_themes)
+                adviser_assignments[best_adv].append(student_id)
+                distributions.append({
+                    "theme_id": common_theme,
+                    "student_id": student_id,
+                    "adviser_id": best_adv
+                })
+
+                # Уменьшаем число мест у научного руководителя
+                adviser = advisers[best_adv]
+                adviser.number_of_places -= 1
+                session.commit()
+
+                logging.info(
+                    f"Студент ID: {student_id} назначен Научному руководителю ID: {best_adv}, Тема ID: {common_theme}")
 
 class DistributionRepository(BaseRepository):
     def __init__(self, engine):
