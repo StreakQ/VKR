@@ -552,11 +552,18 @@ class DistributionAlgorithmRepository(BaseRepository):
 
         return sorted_results  # Возвращаем отсортированные результаты
 
-    def prepare_advisers_and_themes(self):
+    def prepare_advisers_and_themes(self, session=None):
         """
-        Подготавливает данные о научных руководителях и их темах.
+        Подготавливает данные о научных руководителях и их связях с темами.
         """
-        with self.Session() as session:
+        if session is None:
+            with self.Session() as session:
+                advisers = {adv.adviser_id: adv for adv in session.query(Adviser).all()}
+                adviser_themes = defaultdict(list)
+                for adv_theme in session.query(AdviserTheme).all():
+                    adviser_themes[adv_theme.adviser_id].append(adv_theme.theme_id)
+                return advisers, adviser_themes
+        else:
             advisers = {adv.adviser_id: adv for adv in session.query(Adviser).all()}
             adviser_themes = defaultdict(list)
             for adv_theme in session.query(AdviserTheme).all():
@@ -757,12 +764,10 @@ class DistributionAlgorithmRepository(BaseRepository):
                 adviser.number_of_places -= 1
                 session.commit()
 
-        
-
     def assign_students_to_advisers_and_distribute(self):
         sorted_results = self.link_weighted_grades_with_interest()
         with self.Session() as session:
-            advisers, adviser_themes = self.prepare_advisers_and_themes()
+            advisers, adviser_themes = self.prepare_advisers_and_themes(session=session)
             theme_priority_queues, student_entries = self.create_priority_queues(sorted_results)
             adviser_assignments = defaultdict(list)
 
@@ -781,24 +786,16 @@ class DistributionAlgorithmRepository(BaseRepository):
             unassigned_students = all_students - assigned_students
 
             # Обработка нераспределенных студентов
-            remain_students = self.handle_unassigned_students(unassigned_students, student_entries, advisers, adviser_themes,
+            self.handle_unassigned_students(unassigned_students, student_entries, advisers, adviser_themes,
                                             adviser_assignments, distributions, session)
 
-
-
-            # self.handle_overbooked_students(remain_students, student_entries, advisers, adviser_themes,
-            #                                 adviser_assignments, distributions, session)
+            # Обработка студентов с полностью занятыми темами
+            remaining_unassigned = all_students - assigned_students
+            self.handle_overbooked_students(remaining_unassigned, student_entries, advisers, adviser_themes,
+                                            adviser_assignments, distributions, session)
 
             # Сохраняем распределения
-            self.distribution_repository.add_distribution(distributions)
-
-            # Синхронизируем количество мест у научных руководителей в базе данных
-            self.finalize_adviser_places(advisers, session=session)
-
-            # Логирование финального состояния
-            logging.debug("Финальное состояние научных руководителей:")
-            for adv_id, adviser in advisers.items():
-                logging.debug(f"ID Руководителя: {adv_id}, Мест: {adviser.number_of_places}")
+            self.distribution_repository.add_distribution(distributions, session=session)
 
             return unassigned_students
 
@@ -891,15 +888,35 @@ class DistributionRepository(BaseRepository):
         super().__init__(engine)
         self.Session = sessionmaker(bind=engine)
 
-    def add_distribution(self, distributions):
-        with self.Session() as session:
+    def add_distribution(self, distributions, session=None):
+        """
+        Добавляет распределения студентов в базу данных.
+        :param distributions: Список распределений (словарей).
+        :param session: Опциональная сессия для использования.
+        """
+        if session is None:
+            with self.Session() as session:
+                try:
+                    for distribution in distributions:
+                        new_distribution = Distribution(
+                            student_id=distribution["student_id"],
+                            theme_id=distribution["theme_id"],
+                            adviser_id=distribution["adviser_id"],
+                            # interest_level=distribution.get("interest_level")  # Если нужно добавить уровень интереса
+                        )
+                        session.add(new_distribution)
+                    session.commit()
+                except Exception as e:
+                    session.rollback()
+                    logging.error(f"Ошибка при добавлении распределений: {e}")
+        else:
             try:
                 for distribution in distributions:
                     new_distribution = Distribution(
                         student_id=distribution["student_id"],
                         theme_id=distribution["theme_id"],
                         adviser_id=distribution["adviser_id"],
-                        #interest_level = distribution["interest_level"]
+
                     )
                     session.add(new_distribution)
                 session.commit()
