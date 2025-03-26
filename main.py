@@ -100,11 +100,11 @@ def main():
     distribution_repository.display_all_distributions()
 
 
-    # if unassigned_students:
-    #     print("\nНеназначенные студенты:")
-    #     check_unassigned_students(unassigned_students, adviser_repository, student_theme_interest_repository,
-    #                               student_repository)
-    #
+    if unassigned_students:
+        print("\nНеназначенные студенты:")
+        check_unassigned_students(unassigned_students, adviser_repository, student_theme_interest_repository,
+                                  student_repository)
+
     print("\nОставшиеся места после распределения")
     adviser_repository.display_all_advisers()
 
