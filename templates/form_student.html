@@ -3,15 +3,110 @@
 <head>
     <meta charset="UTF-8">
     <title>Анкета</title>
-  <style>
-
-  </style>
+    <style>
+        table{
+            width:90%;
+            margin: 20px auto;
+            border-collapse:collapse;
+        }
+        th,td{
+            border: 1px solid black;
+            padding: 10px;
+            text-align: left;
+        }
+        select{
+            padding: 5px;
+            font-size: 14px;
+        }
+        th{
+            background-color: lightgray;
+        }
+        h1{
+            text-align: center;
+        }
+        p{
+            font-size: 18px;
+        }
+    </style>
 </head>
 <body>
 <h1>Анкета</h1>
-<p>Высказать пожелания по тематике выпускной квалификационной работы, для чего выделить цветом выбранные 4 тематики
-    из приведенного списка и проставить приоритеты 1, 2, 3, 4 рядом с трехзначным номером тематики, где 1 - наибольший
-приоритет, 4 - наименьший приоритет.</p>
+<p>Высказать пожелания по тематике выпускной квалификационной работы, для чего проставить приоритеты от 1 до 5
+    справа от названия тематики, где 1 - наибольший приоритет, 5 - наименьший приоритет.</p>
+
+
+
+<table border="1">
+    <thead>
+    <tr>
+        <th>Тема ID</th>
+        <th>Название</th>
+        <th>Выбор</th>
+    </tr>
+    </thead>
+    <tbody>
+    {% for theme in themes %}
+    <tr>
+        <td>{{theme.theme_id}}</td>
+        <td>{{theme.theme_name}}</td>
+        <td>
+            <select class="priority-select" data-theme-id="{{theme.theme_id}}">
+                <option value="None">Не выбрано</option>
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="4">4</option>
+                <option value="5">5</option>
+            </select>
+        </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+</table>
+<!-- <a href="{{url_for('add_form')}}">Сохранить</a> -->
+
+<script>
+    // Получаем все элементы select с классом priority-select
+    const selects = document.querySelectorAll('.priority-select');
+
+    // Храним выбранные значения в объекте
+    const selectedValues = {};
+
+    selects.forEach(select => {
+        select.addEventListener('change', function () {
+            const selectedValue = this.value; // Текущее выбранное значение
+            const themeId = this.dataset.themeId; // ID темы для этого комбобокса
+
+            // Если значение уже выбрано в другом комбобоксе
+            if (selectedValue !== "None" && selectedValues[selectedValue] && selectedValues[selectedValue] !== themeId) {
+                alert(`Приоритет "${selectedValue}" уже выбран для другой темы.`);
+                this.value = "None"; // Сбрасываем выбор
+                return;
+            }
+
+            // Очищаем предыдущее значение для этой темы
+            if (selectedValues[selectedValue] === themeId) {
+                delete selectedValues[selectedValue];
+            }
+
+            // Обновляем выбранные значения
+            if (selectedValue !== "None") {
+                selectedValues[selectedValue] = themeId;
+            }
+
+            // Блокируем выбранное значение в других комбобоксах
+            selects.forEach(otherSelect => {
+                if (otherSelect !== this) { // Исключаем текущий комбобокс
+                    Array.from(otherSelect.options).forEach(option => {
+                        if (option.value === selectedValue) {
+                            option.disabled = selectedValue !== "None"; // Блокируем, если значение выбрано
+                        }
+                    });
+                }
+            });
+        });
+    });
+</script>
+
 </body>
 </html>
-

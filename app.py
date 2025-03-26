@@ -1,3 +1,5 @@
+from crypt import methods
+
 from sqlalchemy.orm import sessionmaker, joinedload
 from flask import Flask, render_template, request, redirect, url_for, session
 from sqlalchemy import create_engine
@@ -64,7 +66,13 @@ def display_themes():
 
 @app.route("/form_student")
 def form_student():
-    return render_template("form_student.html")
+    themes = theme_repository.get_all(Theme)
+    return render_template("form_student.html",themes=themes)
+
+@app.route("/add_form",methods=["POST"])
+
+def add_form():
+    if request.method == "POST":
 
 
 @app.route("/add_theme", methods=['GET' , 'POST'])
