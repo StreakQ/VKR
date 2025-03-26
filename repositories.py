@@ -24,7 +24,8 @@ class BaseRepository:
             return session.query(model).all()
 
     def get_by_id(self, model, record_id, id_field: str = "id"):
-        """Возвращает запись по ID."""
+        """Возвращает запись по ID.
+        """
         with self.Session() as session:
             return session.query(model).filter(getattr(model, id_field) == record_id).first()
 
@@ -253,6 +254,7 @@ class ThemeRepository(BaseRepository):
             new_theme = Theme(theme_id=theme_id, theme_name=theme_name)
             session.add(new_theme)
             session.commit()
+
 
 class AdviserThemeRepository(BaseRepository):
     def __init__(self, engine, adviser_repository, theme_repository):
