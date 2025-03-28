@@ -1,7 +1,7 @@
+from werkzeug.security import generate_password_hash,check_password_hash
+ADMIN_USERNAME = "admin"
+ADMIN_PASSWORD_HASH =generate_password_hash("mypassowrd123")
 
-import os
 
-class Config:
-    SECRET_KEY = os.environ.get('SECRET_KEY') or 'your_secret_key'
-    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or 'sqlite:///database.db'
-    SQLALCHEMY_TRACK_MODIFICATIONS = False
+passwords =[generate_password_hash("Password" + str(i)) for i in range(50)]
+logins = ["Student" +str(i) for i in range(50)]

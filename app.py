@@ -11,6 +11,8 @@ from openpyxl.styles import Alignment
 import os
 import subprocess
 from main import check_unassigned_students,main
+from werkzeug.security import check_password_hash
+from config import ADMIN_PASSWORD_HASH,ADMIN_USERNAME
 
 app = Flask(__name__)
 app.secret_key = 'key'
@@ -31,23 +33,16 @@ def index():
         )
     return render_template('index.html', distributions=distributions)
 
+@app.route('/login',methods=['POST'])
+def login():
+    username = request.form['username']
+    password = request.form['password']
 
-@app.route("/run_main")
-def run_main():
-    result = subprocess.run([r'C:\PycharmProjects\vkr\.venv\Scripts\python.exe', r'C:\PycharmProjects\vkr\main.py'],
-                            capture_output=True, text=True)
-    if result.returncode != 0:
-        print("Error:", result.stderr)
+    if username == ADMIN_USERNAME and check_password_hash(ADMIN_PASSWORD_HASH,password):
+        session['role'] = 'admin'
+        return redirect(url_for('index'))
 
-    # Получаем неназначенных студентов
-    unassigned_students_list, student_repository, student_theme_interest_repository, adviser_repository = main()
-    unassigned_info = check_unassigned_students(unassigned_students_list, student_repository,
-                                                student_theme_interest_repository)
-
-    # Сохраняем неназначенных студентов в сессии
-    session['unassigned_students'] = unassigned_info
-
-    return redirect(url_for('index'))
+    student = session.query(Student).filter_by(username=username).first()
 
 @app.route("/students")
 def display_students():
@@ -69,10 +64,10 @@ def form_student():
     themes = theme_repository.get_all(Theme)
     return render_template("form_student.html",themes=themes)
 
-@app.route("/add_form",methods=["POST"])
-
-def add_form():
-    if request.method == "POST":
+# @app.route("/add_form",methods=["POST"])
+#
+# def add_form():
+#     if request.method == "POST":
 
 
 @app.route("/add_theme", methods=['GET' , 'POST'])
@@ -211,6 +206,23 @@ def unassigned_students():
         return render_template('unassigned_students.html', unassigned_students=[])  # Если нет неназначенных студентов, передаем пустой список
     return render_template('unassigned_students.html', unassigned_students=unassigned_info)
 
+
+@app.route("/run_main")
+def run_main():
+    result = subprocess.run([r'C:\PycharmProjects\vkr\.venv\Scripts\python.exe', r'C:\PycharmProjects\vkr\main.py'],
+                            capture_output=True, text=True)
+    if result.returncode != 0:
+        print("Error:", result.stderr)
+
+    # Получаем неназначенных студентов
+    unassigned_students_list, student_repository, student_theme_interest_repository, adviser_repository = main()
+    unassigned_info = check_unassigned_students(unassigned_students_list, student_repository,
+                                                student_theme_interest_repository)
+
+    # Сохраняем неназначенных студентов в сессии
+    session['unassigned_students'] = unassigned_info
+
+    return redirect(url_for('index'))
 
 
 if __name__ == '__main__':

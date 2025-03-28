@@ -11,6 +11,7 @@ from data import *
 from collections import defaultdict, deque
 import heapq
 
+
 fake = Faker('ru_RU')
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -73,8 +74,10 @@ class BaseRepository:
 
 
 class StudentRepository(BaseRepository):
-    def add_student(self, firstname: str, lastname: str, patronymic: str, group_student: str):
+    def add_student(self,username:str,password_hash:str, firstname: str, lastname: str, patronymic: str, group_student: str):
         new_student = Student(
+            username=username,
+            password_hash=password_hash,
             firstname=firstname,
             lastname=lastname,
             patronymic=patronymic,
@@ -92,9 +95,11 @@ class StudentRepository(BaseRepository):
         if student:
             self.delete_record(student)
 
-    def add_initial_students(self, count: int = 10):
-        for _ in range(count):
+    def add_initial_students(self,logins:list,passwords:list, count: int = 10):
+        for i in range(count):
             self.add_student(
+                username=logins[i],
+                password_hash=passwords[i],
                 firstname=fake.first_name_male(),
                 lastname=fake.last_name_male(),
                 patronymic=fake.first_name_male(),

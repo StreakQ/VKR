@@ -7,14 +7,13 @@ Base = declarative_base()
 class Student(Base):
     __tablename__ = 'students'
     student_id = Column(Integer, primary_key=True)
+    username = Column(String, unique=True, nullable=False)
+    password_hash = Column(String, nullable=False)
     firstname = Column(String, nullable=False)
     lastname = Column(String, nullable=False)
     patronymic = Column(String, nullable=False)
     group_student = Column(String, nullable=False)
 
-    user_id = Column(Integer, ForeignKey('users.user_id'),nullable=False,unique=True)
-
-    user = relationship('User', back_populates='student')
     grades = relationship("StudentSubjectGrade", back_populates="student")
     interests = relationship("StudentThemeInterest", back_populates="student")
     distributions = relationship("Distribution", back_populates="student")
@@ -26,9 +25,7 @@ class Adviser(Base):
     lastname = Column(String, nullable=False)
     patronymic = Column(String, nullable=False)
     number_of_places = Column(Integer, nullable=False)
-    user_id = Column(Integer, ForeignKey('users.user_id'), nullable=False, unique=True)
-    
-    user = relationship("User", back_populates="adviser")
+
     adviser_themes = relationship("AdviserTheme", back_populates="adviser")
     distributions = relationship("Distribution", back_populates="adviser")
 
@@ -118,12 +115,3 @@ class DistributionAlgorithm(Base):
     student_theme_interest = relationship("StudentThemeInterest")
     adviser_theme = relationship("AdviserTheme")
 
-class User(Base):
-    __tablename__ = 'users'
-    user_id = Column(Integer, primary_key=True)
-    username = Column(String(20), unique=True, nullable=False)
-    password_hash = Column(String(128), nullable=False)
-    role = Column(String(20), nullable=False)
-
-    student = relationship("Student", back_populates="user", uselist=False)
-    adviser = relationship("Adviser",back_populates="user",uselist=False)
