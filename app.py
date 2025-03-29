@@ -1,4 +1,3 @@
-from crypt import methods
 
 from sqlalchemy.orm import sessionmaker, joinedload
 from flask import Flask, render_template, request, redirect, url_for, session
@@ -33,16 +32,27 @@ def index():
         )
     return render_template('index.html', distributions=distributions)
 
-@app.route('/login',methods=['POST'])
+@app.route('/login', methods=['GET', 'POST'])
 def login():
-    username = request.form['username']
-    password = request.form['password']
+    if request.method == 'GET':
+        return render_template('login_form.html')
 
-    if username == ADMIN_USERNAME and check_password_hash(ADMIN_PASSWORD_HASH,password):
-        session['role'] = 'admin'
-        return redirect(url_for('index'))
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
 
-    student = session.query(Student).filter_by(username=username).first()
+        with Session() as db_session:
+            if username == ADMIN_USERNAME and check_password_hash(ADMIN_PASSWORD_HASH, password):
+                session['role'] = 'admin'
+                return redirect(url_for('index'))
+
+            student = db_session.query(Student).filter_by(username=username).first()
+            if student and check_password_hash(student.password_hash, password):
+                session['role'] = 'student'
+                session['student_id'] = student.student_id
+                return redirect(url_for("form_student"))
+
+        return "Неверный логин или пароль", 401
 
 @app.route("/students")
 def display_students():
@@ -64,10 +74,8 @@ def form_student():
     themes = theme_repository.get_all(Theme)
     return render_template("form_student.html",themes=themes)
 
-# @app.route("/add_form",methods=["POST"])
-#
-# def add_form():
-#     if request.method == "POST":
+#@app.route("/save_priorities",methods=["POST"])
+
 
 
 @app.route("/add_theme", methods=['GET' , 'POST'])
