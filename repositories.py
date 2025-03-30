@@ -50,6 +50,8 @@ class BaseRepository:
                 session.rollback()
                 logging.error(f"Ошибка при добавлении записи: {e}")
 
+
+
     def update_record(self, record, **kwargs):
         """Обновляет запись."""
         with self.Session() as session:
@@ -419,34 +421,30 @@ class StudentThemeInterestRepository(BaseRepository):
             session.add(new_student_theme_interest)
             session.commit()
 
+    def update_student_theme_interest(self, student_id, theme_id, interest_level):
+        with self.Session() as session:
+            student_theme_interest = StudentThemeInterest(student_id=student_id, theme_id=theme_id, interest_level=interest_level)
+            session.add(student_theme_interest)
+            session.commit()
+
     def generate_random_interests(self):
         with self.Session() as session:
-            # Получаем все доступные темы из базы данных
             available_themes = session.query(Theme).all()
-
-            # Случайным образом выбираем 5 тем
             selected_themes = rnd.sample(available_themes, 5)
-
-            # Генерируем уникальные уровни интереса от 1 до 5
             interest_levels = [1, 2, 3, 4, 5]
             rnd.shuffle(interest_levels)
-
-            # Создаем список интересов
             interests = [(theme.theme_id, level) for theme, level in zip(selected_themes, interest_levels)]
             return interests
 
     def initialize_student_interests(self):
         students = self.student_repository.get_all(Student)
         for student in students:
-            # Генерируем интересы для каждого студента
             interests = self.generate_random_interests()
-            # Добавляем интересы к темам
             self.add_multiple_student_theme_interests(student.student_id, interests)
 
     def add_multiple_student_theme_interests(self, student_id, interests):
         with self.Session() as session:
             try:
-
                 for theme_id, interest_level in interests:
                     self.add_student_theme_interest(student_id, theme_id, interest_level)
             except Exception as e:
@@ -967,3 +965,4 @@ class DistributionRepository(BaseRepository):
             return False
         finally:
             session.close()
+

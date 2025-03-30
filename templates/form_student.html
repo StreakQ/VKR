@@ -78,9 +78,26 @@
     {% endfor %}
     </tbody>
 </table>
+<form id="save-form" action="{{url_for('save_priorities')}}" method="POST">
+    <input type="hidden" id="priorities-data" name="priorities"/>
+    <button type="submit">Сохранить</button>
+</form>
 
-<button type="submit">Сохранить заполненную анкету</button>
+<script>
+    document.getElementById('save-form').addEventListener('submit', function (event) {
+        const selects = document.querySelectorAll('.priority-select');
+        const priorities = {};
 
+        selects.forEach(select => {
+            if (select.value !== "None") {
+                priorities[select.dataset.themeId] = select.value;
+            }
+        });
+
+        console.log("Собранные приоритеты:", priorities); // Логирование
+        document.getElementById('priorities-data').value = JSON.stringify(priorities);
+    });
+</script>
 <script>
     // Получаем все элементы select с классом priority-select
     const selects = document.querySelectorAll('.priority-select');

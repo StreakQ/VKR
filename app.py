@@ -1,7 +1,8 @@
 
 from sqlalchemy.orm import sessionmaker, joinedload
-from flask import Flask, render_template, request, redirect, url_for, session
 from sqlalchemy import create_engine
+from sqlalchemy.sql import exists
+from flask import Flask, render_template, request, redirect, url_for, session, jsonify
 from repositories import *
 from models import Distribution
 import pandas as pd
@@ -12,6 +13,8 @@ import subprocess
 from main import check_unassigned_students,main
 from werkzeug.security import check_password_hash
 from config import ADMIN_PASSWORD_HASH,ADMIN_USERNAME
+import json
+
 
 app = Flask(__name__)
 app.secret_key = 'key'
@@ -21,6 +24,7 @@ distribution_repository = DistributionRepository(engine)
 student_repository = StudentRepository(engine)
 adviser_repository = AdviserRepository(engine)
 theme_repository = ThemeRepository(engine)
+student_theme_interest_repository = StudentThemeInterestRepository(engine,student_repository,theme_repository)
 
 @app.route('/')
 def index():
@@ -74,7 +78,59 @@ def form_student():
     themes = theme_repository.get_all(Theme)
     return render_template("form_student.html",themes=themes)
 
-#@app.route("/save_priorities",methods=["POST"])
+@app.route("/save_priorities", methods=["POST"])
+def save_priorities():
+    try:
+        # Получаем данные из формы
+        priorities_data = request.form.get('priorities')
+        if not priorities_data:
+            return "Данные не предоставлены", 400
+
+        # Получаем ID студента из Flask-сессии
+        student_id = session.get('student_id')
+        if not student_id:
+            return "Студент не авторизован", 401
+
+        # Преобразуем JSON-строку в словарь
+        priorities = json.loads(priorities_data)
+        logging.debug(f"Полученные приоритеты: {priorities}")
+
+        # Обрабатываем каждую пару "тема — приоритет"
+        with Session() as db_session:
+            for theme_id, priority in priorities.items():
+                # Проверяем существование записи
+                exists_query = db_session.query(
+                    exists().where(
+                        StudentThemeInterest.student_id == student_id,
+                        StudentThemeInterest.theme_id == int(theme_id)
+                    )
+                ).scalar()
+
+                if exists_query:
+                    # Обновляем существующую запись
+                    existing_entry = db_session.query(StudentThemeInterest).filter_by(
+                        student_id=student_id,
+                        theme_id=int(theme_id)
+                    ).first()
+                    existing_entry.interest_level = int(priority)
+                else:
+                    # Создаем новую запись
+                    new_entry = StudentThemeInterest(
+                        student_id=student_id,
+                        theme_id=int(theme_id),
+                        interest_level=int(priority)
+                    )
+                    db_session.add(new_entry)
+
+            db_session.commit()
+            student_theme_interest_repository.display_all_student_theme_interests()
+        return "Приоритеты успешно сохранены!", 200
+
+    except json.JSONDecodeError:
+        return "Некорректные данные JSON", 400
+    except Exception as e:
+        logging.error(f"Ошибка при сохранении приоритетов: {e}")
+        return f"Произошла ошибка: {e}", 500
 
 
 
