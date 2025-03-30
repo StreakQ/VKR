@@ -97,33 +97,26 @@ def save_priorities():
 
         # Обрабатываем каждую пару "тема — приоритет"
         with Session() as db_session:
-            for theme_id, priority in priorities.items():
-                # Проверяем существование записи
-                exists_query = db_session.query(
-                    exists().where(
-                        StudentThemeInterest.student_id == student_id,
-                        StudentThemeInterest.theme_id == int(theme_id)
-                    )
-                ).scalar()
+            # Удаляем все существующие записи для данного студента
+            db_session.query(StudentThemeInterest).filter_by(student_id=student_id).delete()
+            logging.debug(f"Удалены все записи для Студента ID {student_id}")
 
-                if exists_query:
-                    # Обновляем существующую запись
-                    existing_entry = db_session.query(StudentThemeInterest).filter_by(
-                        student_id=student_id,
-                        theme_id=int(theme_id)
-                    ).first()
-                    existing_entry.interest_level = int(priority)
-                else:
-                    # Создаем новую запись
-                    new_entry = StudentThemeInterest(
-                        student_id=student_id,
-                        theme_id=int(theme_id),
-                        interest_level=int(priority)
-                    )
-                    db_session.add(new_entry)
+            # Добавляем новые записи
+            for theme_id, priority in priorities.items():
+                theme_id = int(theme_id)
+                priority = int(priority)
+
+                new_entry = StudentThemeInterest(
+                    student_id=student_id,
+                    theme_id=theme_id,
+                    interest_level=priority
+                )
+                db_session.add(new_entry)
+                logging.debug(f"Добавлена новая запись: Студент ID {student_id}, Тема ID {theme_id}, Приоритет {priority}")
 
             db_session.commit()
             student_theme_interest_repository.display_all_student_theme_interests()
+
         return "Приоритеты успешно сохранены!", 200
 
     except json.JSONDecodeError:
@@ -131,7 +124,6 @@ def save_priorities():
     except Exception as e:
         logging.error(f"Ошибка при сохранении приоритетов: {e}")
         return f"Произошла ошибка: {e}", 500
-
 
 
 @app.route("/add_theme", methods=['GET' , 'POST'])
@@ -268,7 +260,7 @@ def unassigned_students():
     unassigned_info = session.get('unassigned_students', None)
     if unassigned_info is None:
         return render_template('unassigned_students.html', unassigned_students=[])  # Если нет неназначенных студентов, передаем пустой список
-    return render_template('unassigned_students.html', unassigned_students=unassigned_info)
+    return render_template("unassigned_students.html", unassigned_students=unassigned_info)
 
 
 @app.route("/run_main")
@@ -278,13 +270,13 @@ def run_main():
     if result.returncode != 0:
         print("Error:", result.stderr)
 
-    # Получаем неназначенных студентов
-    unassigned_students_list, student_repository, student_theme_interest_repository, adviser_repository = main()
-    unassigned_info = check_unassigned_students(unassigned_students_list, student_repository,
-                                                student_theme_interest_repository)
-
-    # Сохраняем неназначенных студентов в сессии
-    session['unassigned_students'] = unassigned_info
+    # # # Получаем неназначенных студентов
+    # # unassigned_students_list, student_repository, student_theme_interest_repository, adviser_repository = main()
+    # # unassigned_info = check_unassigned_students(unassigned_students_list, student_repository,
+    # #                                             student_theme_interest_repository)
+    #
+    # # Сохраняем неназначенных студентов в сессии
+    # session['unassigned_students'] = unassigned_info
 
     return redirect(url_for('index'))
 
@@ -292,7 +284,7 @@ def run_main():
 if __name__ == '__main__':
     app.run(debug=True)
 
-# <!--    <a href="{{url_for('choose_interest_themes')}}">Выбор интересующих тем</a>-->
+
 # <!--            <a href="{{ url_for('display_theme_subjects') }}">Таблица связи тем и предметов</a>-->
 # <!--            <a href="{{ url_for('display_adviser_themes') }}">Таблица связи научных руководителей и тем</a>-->
 # <!--            <a href="{{ url_for('display_student_theme_interests') }}">Таблица интересов студентов</a>-->
