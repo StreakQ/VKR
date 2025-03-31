@@ -3,6 +3,8 @@ from sqlalchemy.orm import sessionmaker, joinedload
 from sqlalchemy import create_engine
 from sqlalchemy.sql import exists
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify
+
+
 from repositories import *
 from models import Distribution
 import pandas as pd
@@ -25,7 +27,8 @@ student_repository = StudentRepository(engine)
 adviser_repository = AdviserRepository(engine)
 theme_repository = ThemeRepository(engine)
 student_theme_interest_repository = StudentThemeInterestRepository(engine,student_repository,theme_repository)
-
+subject_repository = SubjectRepository(engine)
+theme_subject_importance_repository = ThemeSubjectImportanceRepository(engine, theme_repository, subject_repository)
 @app.route('/')
 def index():
     with Session() as session:
@@ -57,6 +60,59 @@ def login():
                 return redirect(url_for("form_student"))
 
         return "Неверный логин или пароль", 401
+
+@app.route("/get_subjects")
+def get_subjects():
+    try:
+        subjects = subject_repository.get_all(Subject)
+        list_subjects = [{'id': subject.subject_id, 'name': subject.subject_name} for subject in subjects]
+        return jsonify(list_subjects),200
+    except Exception as e:
+        logging.error(f"Ошибка при получении предметов:{e}")
+        return f"Произошла ошибка{e}",500
+
+@app.route('/assign_importances',methods=["GET","POST"])
+def assign_importances():
+    if request.method == 'POST':
+        try:
+            data = request.form
+            themes = {}
+            for key, value in data.items():
+                if key.startswith("theme_name"):
+                    theme_index = key.split("_")[-1]
+                    themes[theme_index] = {"name": value, "subjects": []}
+                elif key.startswith('subject'):
+                    theme_index = key.split('_')[1]
+                    subject_id = value
+                    weight_key = f"weight_{theme_index}_{key.split('_')[2]}"
+                    weight = data.get(weight_key)
+                    themes[theme_index]['subjects'].append({'id': subject_id, "weight": float(weight)})
+
+            for theme_data in themes.values():
+                theme_id = theme_data["theme_id"]
+                for subject in theme_data["subjects"]:
+                    theme_subject_importance_repository.add_theme_subject_importance(
+                        theme_id=theme_id,
+                        subject_id=int(subject['id']),
+                        weight=float(subject['weight'])
+                    )
+        except Exception as e:
+            return f"Произошла ошибка:{e}",500
+    return render_template("assign_importances.html")
+
+
+@app.route("/get_themes", methods=["GET"])
+def get_themes():
+    try:
+
+        themes = theme_repository.get_all(Theme)
+
+        themes_list = [{"id": theme.theme_id, "name": theme.name} for theme in themes]
+        return jsonify(themes_list), 200
+
+    except Exception as e:
+        logging.error(f"Ошибка при получении тем: {e}")
+        return f"Произошла ошибка: {e}", 500
 
 @app.route("/students")
 def display_students():
