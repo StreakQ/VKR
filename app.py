@@ -4,9 +4,8 @@ from sqlalchemy import create_engine
 from sqlalchemy.sql import exists
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify
 
-
 from repositories import *
-from models import Distribution
+from models import Distribution,Theme
 import pandas as pd
 from openpyxl import Workbook
 from openpyxl.styles import Alignment
@@ -71,45 +70,48 @@ def get_subjects():
         logging.error(f"Ошибка при получении предметов:{e}")
         return f"Произошла ошибка{e}",500
 
-@app.route('/assign_importances',methods=["GET","POST"])
+@app.route('/assign_importances', methods=["GET", "POST"])
 def assign_importances():
     if request.method == 'POST':
         try:
             data = request.form
+            print(data)
             themes = {}
             for key, value in data.items():
                 if key.startswith("theme_name"):
                     theme_index = key.split("_")[-1]
                     themes[theme_index] = {"name": value, "subjects": []}
-                elif key.startswith('subject'):
-                    theme_index = key.split('_')[1]
-                    subject_id = value
-                    weight_key = f"weight_{theme_index}_{key.split('_')[2]}"
-                    weight = data.get(weight_key)
-                    themes[theme_index]['subjects'].append({'id': subject_id, "weight": float(weight)})
 
-            for theme_data in themes.values():
-                theme_id = theme_data["theme_id"]
-                for subject in theme_data["subjects"]:
-                    theme_subject_importance_repository.add_theme_subject_importance(
-                        theme_id=theme_id,
-                        subject_id=int(subject['id']),
-                        weight=float(subject['weight'])
-                    )
+            # Собираем предметы и веса для каждой темы
+            for key, value in data.lists():
+                if key.startswith("subject"):
+                    theme_index = key.split("_")[1]
+                    if theme_index in themes:
+                        subjects = value
+                        weights = data.getlist(f"weight_{theme_index}")
+
+                        # Связываем предметы и веса
+                        for subject_id, weight in zip(subjects, weights):
+                            theme_name = themes[theme_index]["name"]
+                            theme_subject_importance_repository.add_theme_subject_importance(
+                                theme_id=theme_index,
+                                subject_id=int(subject_id),
+                                weight=float(weight)
+                            )
+            theme_subject_importance_repository.display_all_theme_subject_importances()
+            return "Данные успешно сохранены!", 200
+
         except Exception as e:
-            return f"Произошла ошибка:{e}",500
-    return render_template("assign_importances.html")
+            return f"Произошла ошибка: {e}", 500
 
+    return render_template("assign_importances.html")
 
 @app.route("/get_themes", methods=["GET"])
 def get_themes():
     try:
-
         themes = theme_repository.get_all(Theme)
-
-        themes_list = [{"id": theme.theme_id, "name": theme.name} for theme in themes]
+        themes_list = [{"id": theme.theme_id, "name": theme.theme_name} for theme in themes]
         return jsonify(themes_list), 200
-
     except Exception as e:
         logging.error(f"Ошибка при получении тем: {e}")
         return f"Произошла ошибка: {e}", 500
@@ -340,7 +342,3 @@ def run_main():
 if __name__ == '__main__':
     app.run(debug=True)
 
-
-# <!--            <a href="{{ url_for('display_theme_subjects') }}">Таблица связи тем и предметов</a>-->
-# <!--            <a href="{{ url_for('display_adviser_themes') }}">Таблица связи научных руководителей и тем</a>-->
-# <!--            <a href="{{ url_for('display_student_theme_interests') }}">Таблица интересов студентов</a>-->

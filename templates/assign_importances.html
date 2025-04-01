@@ -14,6 +14,8 @@
     th, td {
       padding: 8px;
       text-align: left;
+      word-wrap:break-word;
+      max-width:300px;
     }
     .subject-row {
       margin-bottom: 5px;
@@ -23,14 +25,12 @@
 <body>
   <h1>Задание важных предметов для тем</h1>
 
-  <form id="theme-form" method="POST" action="/assign-importances">
+  <form id="theme-form" method="POST" action="/assign_importances">
     <table id="theme-table">
       <thead>
         <tr>
           <th>Тема</th>
-          <th>Предмет</th>
-          <th>Вес</th>
-          <th>Действия</th>
+          <th>Предмет и веса</th>
         </tr>
       </thead>
       <tbody>
@@ -56,6 +56,55 @@
         console.error(error);
       }
     }
+
+      async function loadThemes() {
+    try {
+      const response = await fetch("/get_themes");
+      if (!response.ok) {
+        throw new Error("Ошибка при загрузке тем");
+      }
+      const themes = await response.json();
+
+      const tableBody = document.querySelector("#theme-table tbody");
+      themes.forEach((theme, index) => {
+        // Создаем строку для темы
+        const themeRow = document.createElement("tr");
+
+        // Ячейка с названием темы
+        const themeNameCell = document.createElement("td");
+        const themeNameInput = document.createElement("input");
+        themeNameInput.type = "hidden"; // Скрытое поле
+        themeNameInput.name = `theme_name_${index}`;
+        themeNameInput.value = theme.name; // Устанавливаем название темы
+        themeNameCell.appendChild(themeNameInput);
+
+        // Отображаем название темы (не редактируемое)
+        const themeNameDiv = document.createElement("div");
+        themeNameDiv.textContent = theme.name;
+        themeNameCell.appendChild(themeNameDiv);
+        themeRow.appendChild(themeNameCell);
+
+        // Ячейка для предметов
+        const subjectsCell = document.createElement("td");
+        const subjectsContainer = document.createElement("div");
+        subjectsContainer.className = "subjects-container";
+        subjectsCell.appendChild(subjectsContainer);
+
+        // Кнопка добавления предмета
+        const addSubjectButton = document.createElement("button");
+        addSubjectButton.type = "button";
+        addSubjectButton.textContent = "Добавить предмет";
+        addSubjectButton.onclick = () => addSubjectRow(themeRow, index);
+        subjectsCell.appendChild(addSubjectButton);
+
+        themeRow.appendChild(subjectsCell);
+
+        tableBody.appendChild(themeRow);
+      });
+    } catch (error) {
+      console.error(error);
+    }
+  }
 
     // Функция для создания выпадающего списка предметов
     function createSubjectDropdown(themeIndex) {
@@ -93,7 +142,7 @@
       const weightInput = document.createElement("input");
       weightInput.type = "number";
       weightInput.name = `weight_${themeIndex}`;
-      weightInput.step = "0.01";
+      weightInput.step = "0.1";
       weightInput.placeholder = "Вес";
       subjectRow.appendChild(weightInput);
 
@@ -107,47 +156,10 @@
       themeRow.querySelector(".subjects-container").appendChild(subjectRow);
     }
 
-    // Функция для добавления новой темы
-    function addTheme() {
-      const tableBody = document.querySelector("#theme-table tbody");
-
-      // Создаем строку для темы
-      const themeRow = document.createElement("tr");
-
-      // Ячейка с названием темы
-      const themeNameCell = document.createElement("td");
-      const themeNameInput = document.createElement("input");
-      themeNameInput.type = "text";
-      themeNameInput.name = "theme_name";
-      themeNameInput.placeholder = "Название темы";
-      themeNameCell.appendChild(themeNameInput);
-      themeRow.appendChild(themeNameCell);
-
-      // Ячейка для предметов
-      const subjectsCell = document.createElement("td");
-      const subjectsContainer = document.createElement("div");
-      subjectsContainer.className = "subjects-container";
-      subjectsCell.appendChild(subjectsContainer);
-
-      // Кнопка добавления предмета
-      const addSubjectButton = document.createElement("button");
-      addSubjectButton.type = "button";
-      addSubjectButton.textContent = "Добавить предмет";
-      addSubjectButton.onclick = () => addSubjectRow(themeRow, tableBody.children.length);
-      subjectsCell.appendChild(addSubjectButton);
-
-      themeRow.appendChild(subjectsCell);
-
-      // Пустая ячейка для действий
-      const actionsCell = document.createElement("td");
-      themeRow.appendChild(actionsCell);
-
-      tableBody.appendChild(themeRow);
-    }
-
-    // Загружаем предметы при загрузке страницы
+    // Загружаем предметы и темы при загрузке страницы
     window.onload = async () => {
       await loadSubjects(); // Загружаем предметы
+      await loadThemes();   // Загружаем темы
     };
   </script>
 </body>

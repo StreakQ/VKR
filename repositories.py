@@ -30,6 +30,29 @@ class BaseRepository:
         with self.Session() as session:
             return session.query(model).filter(getattr(model, id_field) == record_id).first()
 
+    def get_id_by_value(self, model, value, column_name: str):
+        """
+        Возвращает ID записи по значению в указанной колонке.
+
+        :param model: Модель таблицы SQLAlchemy.
+        :param value: Значение для поиска.
+        :param column_name: Название колонки, по которой выполняется поиск.
+        :return: ID записи или None, если запись не найдена.
+        """
+        with self.Session() as session:
+            try:
+                # Получаем атрибут модели (колонку) по её имени
+                column = getattr(model, column_name)
+
+                # Ищем запись по значению в указанной колонке
+                record = session.query(model).filter(column == value).first()
+
+                # Возвращаем ID записи, если она найдена
+                return record.id if record else None
+            except Exception as e:
+                logging.error(f"Ошибка при поиске ID записи: {e}")
+                return None
+
     def delete_all(self, model):
         """Удаляет все записи модели."""
         with self.Session() as session:
@@ -310,9 +333,31 @@ class ThemeSubjectImportanceRepository(BaseRepository):
 
     def add_theme_subject_importance(self, theme_id, subject_id, weight):
         with self.Session() as session:
-            new_theme_subject_importance = ThemeSubjectImportance(theme_id=theme_id, subject_id=subject_id, weight=weight)
-            session.add(new_theme_subject_importance)
-            session.commit()
+            try:
+                # Проверяем, существует ли запись для данной темы и предмета
+                existing_record = session.query(ThemeSubjectImportance).filter_by(
+                    theme_id=theme_id,
+                    subject_id=subject_id
+                ).first()
+
+                if existing_record:
+                    # Если запись существует, обновляем её вес
+                    existing_record.weight = weight
+                    print(f"Обновлено: Тема ID: {theme_id}, Предмет ID: {subject_id}, Новый вес: {weight}")
+                else:
+                    # Если записи нет, создаем новую
+                    new_record = ThemeSubjectImportance(
+                        theme_id=theme_id,
+                        subject_id=subject_id,
+                        weight=weight
+                    )
+                    session.add(new_record)
+                    print(f"Добавлено: Тема ID: {theme_id}, Предмет ID: {subject_id}, Вес: {weight}")
+
+                session.commit()  # Сохраняем изменения
+            except Exception as e:
+                session.rollback()
+                logging.error(f"Ошибка при добавлении/обновлении важности: {e}")
 
     def update_theme_subject_importance(self, theme_subject_importance_id, theme_id=None, subject_id=None, weight=None):
         with self.Session() as session:
