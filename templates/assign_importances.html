@@ -58,53 +58,103 @@
     }
 
       async function loadThemes() {
-    try {
-      const response = await fetch("/get_themes");
-      if (!response.ok) {
-        throw new Error("Ошибка при загрузке тем");
-      }
-      const themes = await response.json();
-
-      const tableBody = document.querySelector("#theme-table tbody");
-      themes.forEach((theme, index) => {
-        // Создаем строку для темы
-        const themeRow = document.createElement("tr");
-
-        // Ячейка с названием темы
-        const themeNameCell = document.createElement("td");
-        const themeNameInput = document.createElement("input");
-        themeNameInput.type = "hidden"; // Скрытое поле
-        themeNameInput.name = `theme_name_${index}`;
-        themeNameInput.value = theme.name; // Устанавливаем название темы
-        themeNameCell.appendChild(themeNameInput);
-
-        // Отображаем название темы (не редактируемое)
-        const themeNameDiv = document.createElement("div");
-        themeNameDiv.textContent = theme.name;
-        themeNameCell.appendChild(themeNameDiv);
-        themeRow.appendChild(themeNameCell);
-
-        // Ячейка для предметов
-        const subjectsCell = document.createElement("td");
-        const subjectsContainer = document.createElement("div");
-        subjectsContainer.className = "subjects-container";
-        subjectsCell.appendChild(subjectsContainer);
-
-        // Кнопка добавления предмета
-        const addSubjectButton = document.createElement("button");
-        addSubjectButton.type = "button";
-        addSubjectButton.textContent = "Добавить предмет";
-        addSubjectButton.onclick = () => addSubjectRow(themeRow, index);
-        subjectsCell.appendChild(addSubjectButton);
-
-        themeRow.appendChild(subjectsCell);
-
-        tableBody.appendChild(themeRow);
-      });
-    } catch (error) {
-      console.error(error);
+  try {
+    // Загружаем темы
+    const themesResponse = await fetch("/get_themes");
+    if (!themesResponse.ok) {
+      throw new Error("Ошибка при загрузке тем");
     }
+    const themes = await themesResponse.json();
+
+    // Загружаем связи между темами и предметами
+    const importancesResponse = await fetch("/get_theme_subject_importances");
+    if (!importancesResponse.ok) {
+      throw new Error("Ошибка при загрузке связей тем и предметов");
+    }
+    const importances = await importancesResponse.json();
+
+    // Создаем словарь для быстрого поиска связей по theme_id
+    const importancesByThemeId = {};
+    importances.forEach(importance => {
+      if (!importancesByThemeId[importance.theme_id]) {
+        importancesByThemeId[importance.theme_id] = [];
+      }
+      importancesByThemeId[importance.theme_id].push({
+        subject_id: importance.subject_id,
+        weight: importance.weight
+      });
+    });
+
+    // Отображаем темы в таблице
+    const tableBody = document.querySelector("#theme-table tbody");
+    themes.forEach((theme, index) => {
+      // Создаем строку для темы
+      const themeRow = document.createElement("tr");
+
+      // Ячейка с названием темы
+      const themeNameCell = document.createElement("td");
+      const themeNameInput = document.createElement("input");
+      themeNameInput.type = "hidden";
+      themeNameInput.name = `theme_name_${index}`;
+      themeNameInput.value = theme.name;
+      themeNameCell.appendChild(themeNameInput);
+
+      const themeNameDiv = document.createElement("div");
+      themeNameDiv.textContent = theme.name;
+      themeNameCell.appendChild(themeNameDiv);
+      themeRow.appendChild(themeNameCell);
+
+      // Ячейка для предметов
+      const subjectsCell = document.createElement("td");
+      const subjectsContainer = document.createElement("div");
+      subjectsContainer.className = "subjects-container";
+
+      // Добавляем существующие предметы и веса
+      if (importancesByThemeId[theme.id]) {
+        importancesByThemeId[theme.id].forEach(importance => {
+          const subjectRow = document.createElement("div");
+          subjectRow.className = "subject-row";
+
+          // Выпадающий список предметов
+          const subjectDropdown = createSubjectDropdown(index);
+          subjectDropdown.value = importance.subject_id; // Устанавливаем выбранный предмет
+          subjectRow.appendChild(subjectDropdown);
+
+          // Поле для ввода веса
+          const weightInput = document.createElement("input");
+          weightInput.type = "number";
+          weightInput.name = `weight_${index}`;
+          weightInput.step = "0.1";
+          weightInput.value = importance.weight; // Устанавливаем вес
+          subjectRow.appendChild(weightInput);
+
+          // Кнопка удаления
+          const removeButton = document.createElement("button");
+          removeButton.type = "button";
+          removeButton.textContent = "Удалить";
+          removeButton.onclick = () => subjectRow.remove();
+          subjectRow.appendChild(removeButton);
+
+          subjectsContainer.appendChild(subjectRow);
+        });
+      }
+
+      // Кнопка добавления предмета
+      const addSubjectButton = document.createElement("button");
+      addSubjectButton.type = "button";
+      addSubjectButton.textContent = "Добавить предмет";
+      addSubjectButton.onclick = () => addSubjectRow(themeRow, index);
+      subjectsCell.appendChild(addSubjectButton);
+
+      subjectsCell.appendChild(subjectsContainer);
+      themeRow.appendChild(subjectsCell);
+
+      tableBody.appendChild(themeRow);
+    });
+  } catch (error) {
+    console.error(error);
   }
+}
 
     // Функция для создания выпадающего списка предметов
     function createSubjectDropdown(themeIndex) {

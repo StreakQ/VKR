@@ -3,6 +3,7 @@ from sqlalchemy.orm import sessionmaker, joinedload
 from sqlalchemy import create_engine
 from sqlalchemy.sql import exists
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify
+from sqlalchemy.testing.plugin.plugin_base import logging
 
 from repositories import *
 from models import Distribution,Theme
@@ -116,6 +117,22 @@ def get_themes():
         logging.error(f"Ошибка при получении тем: {e}")
         return f"Произошла ошибка: {e}", 500
 
+@app.route("/get_theme_subject_importances", methods=["GET"])
+def get_theme_subject_importances():
+    try:
+        importances = theme_subject_importance_repository.get_all(ThemeSubjectImportance)
+        importances_list = [
+            {
+                "theme_id": importance.theme_id,
+                "subject_id": importance.subject_id,
+                "weight": round(importance.weight,2)
+            }
+            for importance in importances
+        ]
+        return jsonify(importances_list), 200
+    except Exception as e:
+        logging.error(f"Ошибка при получении связей тем и предметов: {e}")
+        return f"Произошла ошибка: {e}", 500
 @app.route("/students")
 def display_students():
     students = student_repository.get_all(Student)
