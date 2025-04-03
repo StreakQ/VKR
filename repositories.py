@@ -319,7 +319,6 @@ class AdviserThemeRepository(BaseRepository):
 
     def update_adviser_themes(self, adviser_id, *new_theme_ids):
         with self.Session() as session:
-            # Сначала удаляем все старые темы
             session.query(AdviserTheme).filter(AdviserTheme.adviser_id == adviser_id).delete()
             self.add_adviser_themes(adviser_id, *new_theme_ids)
 

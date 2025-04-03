@@ -53,9 +53,10 @@
         <button class="dropbtn">Таблицы</button>
         <div class="dropdown-content">
             <a href="{{ url_for('display_students') }}">Студенты</a>
-            <a href="{{ url_for('display_advisers') }}">Преподаватели</a>
+            <a href="{{ url_for('display_advisers') }}">Научные руководители</a>
             <a href="{{ url_for('display_themes') }}">Темы</a>
             <a href="{{url_for('assign_importances')}}">Задание темам весов</a>
+            <a href="{{url_for('assign_advisers_to_themes')}}">Связывание научных руководителей с темами</a>
 
         </div>
     </div>

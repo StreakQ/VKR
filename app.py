@@ -3,10 +3,9 @@ from sqlalchemy.orm import sessionmaker, joinedload
 from sqlalchemy import create_engine
 from sqlalchemy.sql import exists
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify
-from sqlalchemy.testing.plugin.plugin_base import logging
 
 from repositories import *
-from models import Distribution,Theme
+from models import Distribution,Theme,AdviserTheme
 import pandas as pd
 from openpyxl import Workbook
 from openpyxl.styles import Alignment
@@ -26,8 +25,9 @@ distribution_repository = DistributionRepository(engine)
 student_repository = StudentRepository(engine)
 adviser_repository = AdviserRepository(engine)
 theme_repository = ThemeRepository(engine)
-student_theme_interest_repository = StudentThemeInterestRepository(engine,student_repository,theme_repository)
 subject_repository = SubjectRepository(engine)
+adviser_theme_repository = AdviserThemeRepository(engine,adviser_repository, theme_repository)
+student_theme_interest_repository = StudentThemeInterestRepository(engine,student_repository,theme_repository)
 theme_subject_importance_repository = ThemeSubjectImportanceRepository(engine, theme_repository, subject_repository)
 @app.route('/')
 def index():
@@ -60,16 +60,6 @@ def login():
                 return redirect(url_for("form_student"))
 
         return "Неверный логин или пароль", 401
-
-@app.route("/get_subjects")
-def get_subjects():
-    try:
-        subjects = subject_repository.get_all(Subject)
-        list_subjects = [{'id': subject.subject_id, 'name': subject.subject_name} for subject in subjects]
-        return jsonify(list_subjects),200
-    except Exception as e:
-        logging.error(f"Ошибка при получении предметов:{e}")
-        return f"Произошла ошибка{e}",500
 
 @app.route('/assign_importances', methods=["GET", "POST"])
 def assign_importances():
@@ -107,6 +97,60 @@ def assign_importances():
 
     return render_template("assign_importances.html")
 
+
+@app.route("/assign_advisers_to_themes", methods=["GET","POST"])
+def assign_advisers_to_themes():
+    if request.method == 'POST':
+        try:
+            data = request.form
+            print("Полученные данные:", data)
+
+            advisers = {}
+            for key, value in data.items():
+                if key.startswith("adviser"):
+                    adviser_index = key.split("_")[-1]
+                    advisers[adviser_index] = {"id": value, "themes": []}
+
+            for key, value in data.lists():
+                if key.startswith("theme"):
+                    adviser_index = key.split("_")[-1]
+                    if adviser_index in advisers:
+                        advisers[adviser_index]["themes"].extend(value)
+
+            for adviser_index in advisers:
+                adviser_id = advisers[adviser_index]["id"]
+                themes = advisers[adviser_index]["themes"]
+
+                # Проверяем существование записей
+                record_exists = session.query(
+                    exists().where(AdviserTheme.adviser_id == adviser_id)
+                ).scalar()
+
+                if record_exists:
+                    print(f"Обновление тем для научного руководителя ID {adviser_id}: {themes}")
+                    adviser_theme_repository.update_adviser_themes(adviser_id=adviser_id, *themes)
+                else:
+                    print(f"Добавление тем для научного руководителя ID {adviser_id}: {themes}")
+                    adviser_theme_repository.add_adviser_themes(adviser_id=adviser_id, *themes)
+
+            return "Данные успешно сохранены!", 200
+
+        except Exception as e:
+            return f"Произошла ошибка: {e}", 500
+    return render_template("assign_advisers_to_themes.html")
+
+
+@app.route("/get_subjects")
+def get_subjects():
+    try:
+        subjects = subject_repository.get_all(Subject)
+        list_subjects = [{'id': subject.subject_id, 'name': subject.subject_name} for subject in subjects]
+        return jsonify(list_subjects),200
+    except Exception as e:
+        logging.error(f"Ошибка при получении предметов:{e}")
+        return f"Произошла ошибка{e}",500
+
+
 @app.route("/get_themes", methods=["GET"])
 def get_themes():
     try:
@@ -116,6 +160,15 @@ def get_themes():
     except Exception as e:
         logging.error(f"Ошибка при получении тем: {e}")
         return f"Произошла ошибка: {e}", 500
+
+@app.route("/get_advisers",methods=["GET"])
+def get_advisers():
+    try:
+        advisers = adviser_repository.get_all(Adviser)
+        advisers_list =[{"id":adviser.adviser_id,"name":adviser.firstname}for adviser in advisers]
+        return jsonify(advisers_list),200
+    except Exception as e:
+        logging.error(f"Оши")
 
 @app.route("/get_theme_subject_importances", methods=["GET"])
 def get_theme_subject_importances():

@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Назначение научным руководителям тем</title>
+  <style>
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    table, th, td {
+      border: 1px solid black;
+    }
+    th, td {
+      padding: 8px;
+      text-align: left;
+    }
+    .adviser-row {
+      margin-bottom: 5px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Назначение научным руководителям тем</h1>
+
+  <form id="advisers_to_themes_form" method="POST" action="/assign_advisers_to_themes">
+    <table id="advisers_to_themes_table">
+      <thead>
+        <tr>
+          <th>Научный руководитель</th>
+          <th>Связанные темы</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- Строки будут добавляться динамически -->
+      </tbody>
+    </table>
+    <button type="button" id="add_adviser">Добавить научного руководителя</button>
+    <button type="submit">Сохранить</button>
+  </form>
+
+  <script>
+    let adviserIndex = 0;
+
+    // Функция для добавления нового научного руководителя
+    document.getElementById("add_adviser").onclick = () => {
+      const tableBody = document.querySelector("#advisers_to_themes_table tbody");
+
+      // Создаем строку для научного руководителя
+      const adviserRow = document.createElement("tr");
+      adviserRow.className = "adviser-row";
+
+      // Ячейка с выпадающим списком научных руководителей
+      const adviserCell = document.createElement("td");
+      const adviserSelect = document.createElement("select");
+      adviserSelect.name = `adviser_${adviserIndex}`;
+      adviserSelect.innerHTML = `
+        <option value="">-- Выберите научного руководителя --</option>
+        <option value="1">Научный руководитель 1</option>
+        <option value="2">Научный руководитель 2</option>
+      `;
+      adviserCell.appendChild(adviserSelect);
+      adviserRow.appendChild(adviserCell);
+
+      // Ячейка для тем
+      const themesCell = document.createElement("td");
+      const themesContainer = document.createElement("div");
+      themesContainer.className = "themes-container";
+      themesCell.appendChild(themesContainer);
+
+      // Кнопка добавления темы
+      const addThemeButton = document.createElement("button");
+      addThemeButton.type = "button";
+      addThemeButton.textContent = "Добавить тему";
+      addThemeButton.onclick = () => addThemeRow(themesContainer, adviserIndex);
+      themesCell.appendChild(addThemeButton);
+
+      adviserRow.appendChild(themesCell);
+
+      tableBody.appendChild(adviserRow);
+      adviserIndex++;
+    };
+
+    // Функция для добавления строки с темой
+    function addThemeRow(container, adviserIndex) {
+      const themeRow = document.createElement("div");
+
+      // Выпадающий список тем
+      const themeSelect = document.createElement("select");
+      themeSelect.name = `theme_${adviserIndex}`;
+      themeSelect.innerHTML = `
+        <option value="">-- Выберите тему --</option>
+        <option value="101">Тема 1</option>
+        <option value="102">Тема 2</option>
+        <option value="103">Тема 3</option>
+      `;
+
+      // Кнопка удаления темы
+      const removeButton = document.createElement("button");
+      removeButton.type = "button";
+      removeButton.textContent = "Удалить";
+      removeButton.onclick = () => container.removeChild(themeRow);
+
+      themeRow.appendChild(themeSelect);
+      themeRow.appendChild(removeButton);
+
+      container.appendChild(themeRow);
+    }
+  </script>
+</body>
+</html>
