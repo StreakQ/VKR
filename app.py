@@ -29,6 +29,8 @@ subject_repository = SubjectRepository(engine)
 adviser_theme_repository = AdviserThemeRepository(engine,adviser_repository, theme_repository)
 student_theme_interest_repository = StudentThemeInterestRepository(engine,student_repository,theme_repository)
 theme_subject_importance_repository = ThemeSubjectImportanceRepository(engine, theme_repository, subject_repository)
+
+
 @app.route('/')
 def index():
     with Session() as session:
@@ -38,6 +40,7 @@ def index():
             joinedload(Distribution.theme)).all()
         )
     return render_template('index.html', distributions=distributions)
+
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
