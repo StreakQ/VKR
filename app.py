@@ -32,6 +32,11 @@ theme_subject_importance_repository = ThemeSubjectImportanceRepository(engine, t
 
 
 @app.route('/')
+def home():
+    return redirect(url_for('login'))
+
+
+@app.route('/index')
 def index():
     with Session() as session:
         distributions = (session.query(Distribution).options(
@@ -63,6 +68,7 @@ def login():
                 return redirect(url_for("form_student"))
 
         return "Неверный логин или пароль", 401
+
 
 @app.route('/assign_importances', methods=["GET", "POST"])
 def assign_importances():
@@ -164,6 +170,7 @@ def get_themes():
         logging.error(f"Ошибка при получении тем: {e}")
         return f"Произошла ошибка: {e}", 500
 
+
 @app.route("/get_advisers",methods=["GET"])
 def get_advisers():
     try:
@@ -172,6 +179,7 @@ def get_advisers():
         return jsonify(advisers_list),200
     except Exception as e:
         logging.error(f"Оши")
+
 
 @app.route("/get_theme_subject_importances", methods=["GET"])
 def get_theme_subject_importances():
@@ -189,25 +197,31 @@ def get_theme_subject_importances():
     except Exception as e:
         logging.error(f"Ошибка при получении связей тем и предметов: {e}")
         return f"Произошла ошибка: {e}", 500
+
+
 @app.route("/students")
 def display_students():
     students = student_repository.get_all(Student)
     return render_template('student_data.html', students=students)
+
 
 @app.route("/advisers")
 def display_advisers():
     advisers = adviser_repository.get_all(Adviser)
     return render_template("adviser_data.html", advisers=advisers)
 
+
 @app.route("/themes")
 def display_themes():
     themes = theme_repository.get_all(Theme)
     return render_template("theme_data.html", themes=themes)
 
+
 @app.route("/form_student")
 def form_student():
     themes = theme_repository.get_all(Theme)
     return render_template("form_student.html",themes=themes)
+
 
 @app.route("/save_priorities", methods=["POST"])
 def save_priorities():
@@ -266,6 +280,7 @@ def add_theme():
         return redirect(url_for('display_themes'))
     return render_template("add_theme.html")
 
+
 @app.route("/add_adviser", methods=['GET', 'POST'])
 def add_adviser():
     if request.method == 'POST':
@@ -278,6 +293,7 @@ def add_adviser():
         return redirect(url_for("display_advisers"))
     return render_template("add_adviser.html")
 
+
 @app.route('/add_distribution', methods=['GET', 'POST'])
 def add_distribution():
     if request.method == 'POST':
@@ -288,6 +304,7 @@ def add_distribution():
         return redirect(url_for('index'))
 
     return render_template('add_distribution.html')
+
 
 @app.route('/update_distribution/<int:distribution_id>', methods=['GET', 'POST'])
 def update_distribution(distribution_id):
@@ -302,24 +319,27 @@ def update_distribution(distribution_id):
 
     return render_template('update_distribution.html', distribution=distribution)
 
+
 @app.route('/delete_adviser/<int:adviser_id>', methods=['POST'])
 def delete_adviser(adviser_id):
     adviser_repository.delete_adviser(adviser_id)
     return redirect(url_for('display_advisers'))
+
 
 @app.route('/delete_theme/<int:theme_id>', methods=['POST'])
 def delete_theme(theme_id):
     theme_repository.delete_theme(theme_id)
     return redirect(url_for('display_themes'))
 
+
 @app.route('/delete_distribution/<int:distribution_id>', methods=['POST'])
 def delete_distribution(distribution_id):
     distribution_repository.delete_distribution(distribution_id)
     return redirect(url_for('index'))
 
-#
-@app.route('/upload', methods=['GET', 'POST'])
-def upload():
+
+@app.route('/upload_distributions', methods=['GET', 'POST'])
+def upload_distributions():
     if request.method == 'POST':
         file = request.files['file']
         if file and file.filename.endswith('.xlsx'):
@@ -337,10 +357,11 @@ def upload():
 
             return redirect(url_for('index'))
 
-    return render_template('upload.html')
+    return render_template('upload_distributions.html')
 
-@app.route('/save', methods=['GET'])
-def save():
+
+@app.route('/save_distributions', methods=['GET'])
+def save_distributions():
     with Session() as session:
         distributions = (
             session.query(Distribution)
@@ -400,15 +421,6 @@ def run_main():
                             capture_output=True, text=True)
     if result.returncode != 0:
         print("Error:", result.stderr)
-
-    # # # Получаем неназначенных студентов
-    # # unassigned_students_list, student_repository, student_theme_interest_repository, adviser_repository = main()
-    # # unassigned_info = check_unassigned_students(unassigned_students_list, student_repository,
-    # #                                             student_theme_interest_repository)
-    #
-    # # Сохраняем неназначенных студентов в сессии
-    # session['unassigned_students'] = unassigned_info
-
     return redirect(url_for('index'))
 
 
