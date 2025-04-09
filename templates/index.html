@@ -61,9 +61,10 @@
 <body>
     <h1>Список распределений</h1>
         {% include 'dropdown_tables.html' %}
+        {% include 'dropdown_upload.html' %}
 
-    <a href="{{ url_for('add_distribution') }}">Добавить распределение</a>
-    <a href="{{ url_for('save') }}"> Сохранить распределения в Excel</a>
+    <a href="{{ url_for('add_distribution') }}">Добавить распределение в таблицу</a>
+    <a href="{{ url_for('save_distributions') }}"> Сохранить распределения в Excel</a>
     <a href="{{url_for('run_main')}}">Запустить алгоритм</a>
     <a href="{{url_for('form_student')}}">Анкета студента </a>
     <a href="{{url_for('login')}}">Вход</a>

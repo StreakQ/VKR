@@ -17,7 +17,7 @@ from config import ADMIN_PASSWORD_HASH,ADMIN_USERNAME
 import json
 
 
-app = Flask(__name__)
+app = Flask(__name__, template_folder='templates')
 app.secret_key = 'key'
 engine = create_engine('sqlite:///database.db')
 Session = sessionmaker(bind=engine)
@@ -358,6 +358,78 @@ def upload_distributions():
             return redirect(url_for('index'))
 
     return render_template('upload_distributions.html')
+
+
+@app.route('/upload_themes', methods=['GET', 'POST'])
+def upload_themes():
+    if request.method == 'POST':
+        file = request.files['file']
+        if file and file.filename.endswith('.xlsx'):
+            if not os.path.exists('uploads'):
+                os.makedirs('uploads')
+            file_path = os.path.join('uploads', file.filename)
+            file.save(file_path)
+            df = pd.read_excel(file_path)
+
+            for index,row in df.iterrows():
+                theme_name = row['theme_name']
+                theme_repository.add_theme(theme_name=theme_name)
+            return redirect(url_for('index'))
+    return render_template('upload_themes.html')
+
+
+@app.route('/upload_students', methods=['GET', 'POST'])
+def upload_students():
+    if request.method == 'POST':
+        file = request.files['file']
+        if file and file.filename.endswith('.xlsx'):
+            if not os.path.exists('uploads'):
+                os.makedirs('uploads')
+            file_path = os.path.join('uploads',file.filename)
+            file.save(file_path)
+            df = pd.read_excel(file_path)
+
+            for index,row in df.iterrows():
+                student_name = row['student_name']
+                group = row['group']
+                username = row['username']
+                password = row['password']
+                student_firstname = student_name.split(" ")[0]
+                student_lastname = student_name.split(" ")[1]
+                student_patronymic = student_name.split(" ")[2]
+                student_repository.add_student(username=username,
+                                               password_hash=password,
+                                               firstname=student_firstname,
+                                               lastname=student_lastname,
+                                               patronymic=student_patronymic)
+
+            return redirect(url_for('index'))
+    return render_template('upload_students.html')
+
+
+@app.route('/upload_advisers', methods=['GET', 'POST'])
+def upload_advisers():
+    if request.method == 'POST':
+        file = request.files['file']
+        if file and file.filename.endswith('.xlsx'):
+            if not os.path.exists('uploads'):
+                os.makedirs('uploads')
+            file_path = os.path.join('uploads',file.filename)
+            file.save(file_path)
+            df = pd.read_excel(file_path)
+
+        for index,row in df.iterrows():
+            adviser_name = row['adviser_name']
+            number_of_places = row['number_of_places']
+            adviser_firstname = adviser_name.split(" ")[0]
+            adviser_lastname = adviser_name.split(" ")[1]
+            adviser_patronymic = adviser_name.split(" ")[2]
+            adviser_repository.add_adviser(firstname=adviser_firstname,
+                                           lastname=adviser_lastname,
+                                           patronymic=adviser_patronymic,
+                                           number_of_places=number_of_places)
+        return redirect(url_for('index'))
+    return render_template('upload_advisers.html')
 
 
 @app.route('/save_distributions', methods=['GET'])

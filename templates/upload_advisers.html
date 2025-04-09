@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Загрузка научных руководителей</title>
+    <style>
+        body{
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        h1{
+            color: #333;
+        }
+        form{
+            max-width: 400px;
+            margin: 20px 0;
+        }
+        label{
+            font-weight: bold;
+        }
+        input[type='file']{
+            margin-bottom: 10px;
+        }
+        button{
+            background-color: #4CAF50;
+            color:white;
+            padding:10px 15px;
+            border:none;
+            cursor:pointer;
+        }
+        button:hover{
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <h1>Загрузка научных руководителей из Excel</h1>
+    <form method="POST" enctype="multipart/form-data">
+        <label for="file">Выберите файл Excel(.xlsx) </label>
+        <input type="file" id="file" accept=".xlsx" required><br><br>
+        <button type="submit">Загрузить</button>
+    </form>
+
+</body>
+</html>
