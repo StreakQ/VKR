@@ -7,6 +7,7 @@ import random as rnd
 from models import *
 from config import passwords,logins
 
+
 def main():
     engine = create_engine('sqlite:///database.db')
 
@@ -142,5 +143,8 @@ if __name__ == "__main__":
     main()
 
 
-#TODO: Алгоритм подправить
-#TODO 1: Разделение ролей
+#TODO 1: Разграничение доступа
+#TODO 2: Возможность запуска веб-интерфейса без выполненного алгоритма
+#TODO 4: Руководство
+#TODO 5: Доделать тесты
+#TODO 6: Рефакторинг

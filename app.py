@@ -107,7 +107,7 @@ def assign_importances():
     return render_template("assign_importances.html")
 
 
-@app.route("/assign_advisers_to_themes", methods=["GET","POST"])
+@app.route("/assign_advisers_to_themes", methods=["GET", "POST"])
 def assign_advisers_to_themes():
     if request.method == 'POST':
         try:
@@ -171,14 +171,14 @@ def get_themes():
         return f"Произошла ошибка: {e}", 500
 
 
-@app.route("/get_advisers",methods=["GET"])
+@app.route("/get_advisers", methods=["GET"])
 def get_advisers():
     try:
         advisers = adviser_repository.get_all(Adviser)
-        advisers_list =[{"id":adviser.adviser_id,"name":adviser.firstname}for adviser in advisers]
-        return jsonify(advisers_list),200
+        advisers_list = [{"id": adviser.adviser_id, "name": adviser.firstname}for adviser in advisers]
+        return jsonify(advisers_list), 200
     except Exception as e:
-        logging.error(f"Оши")
+        logging.error(f"Ошибка при получении научных руководителей")
 
 
 @app.route("/get_theme_subject_importances", methods=["GET"])
@@ -226,17 +226,14 @@ def form_student():
 @app.route("/save_priorities", methods=["POST"])
 def save_priorities():
     try:
-        # Получаем данные из формы
         priorities_data = request.form.get('priorities')
         if not priorities_data:
             return "Данные не предоставлены", 400
 
-        # Получаем ID студента из Flask-сессии
         student_id = session.get('student_id')
         if not student_id:
             return "Студент не авторизован", 401
 
-        # Преобразуем JSON-строку в словарь
         priorities = json.loads(priorities_data)
         logging.debug(f"Полученные приоритеты: {priorities}")
 
@@ -271,7 +268,7 @@ def save_priorities():
         return f"Произошла ошибка: {e}", 500
 
 
-@app.route("/add_theme", methods=['GET' , 'POST'])
+@app.route("/add_theme", methods=['GET', 'POST'])
 def add_theme():
     if request.method == 'POST':
         theme_id = request.form['theme_id']
@@ -349,7 +346,7 @@ def upload_distributions():
             file.save(file_path)
             df = pd.read_excel(file_path)
 
-            for index, row in df.iterrows():
+            for indx, row in df.iterrows():
                 student_id = row['student_id']
                 theme_id = row['theme_id']
                 adviser_id = row['adviser_id']
@@ -401,7 +398,8 @@ def upload_students():
                                                password_hash=password,
                                                firstname=student_firstname,
                                                lastname=student_lastname,
-                                               patronymic=student_patronymic)
+                                               patronymic=student_patronymic,
+                                               group_student=group)
 
             return redirect(url_for('index'))
     return render_template('upload_students.html')
@@ -429,7 +427,9 @@ def upload_advisers():
                 adviser_repository.add_adviser(firstname=adviser_firstname,
                                                lastname=adviser_lastname,
                                                patronymic=adviser_patronymic,
-                                               number_of_places=number_of_places)
+                                               number_of_places=number_of_places,
+                                               username=username,
+                                               password_hash=password)
             return redirect(url_for('index'))
     return render_template('upload_advisers.html')
 
@@ -485,7 +485,7 @@ def save_distributions():
 def unassigned_students():
     unassigned_info = session.get('unassigned_students', None)
     if unassigned_info is None:
-        return render_template('unassigned_students.html', unassigned_students=[])  # Если нет неназначенных студентов, передаем пустой список
+        return render_template('unassigned_students.html', unassigned_students=[])
     return render_template("unassigned_students.html", unassigned_students=unassigned_info)
 
 
@@ -497,10 +497,20 @@ def run_main():
         print("Error:", result.stderr)
     return redirect(url_for('index'))
 
+
 def role_required(role):
+    """
+    Декоратор для проверки роли пользователя
+    :param role: Требуемая роль
+    """
     def decorator(f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
+            if 'role' not in session or session.get('role') != role:
+                return redirect(url_for('login'))
+            return f(*args, **kwargs)
+        return decorated_function
+    return decorator
 
 
 if __name__ == '__main__':
