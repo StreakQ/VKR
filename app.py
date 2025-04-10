@@ -503,6 +503,17 @@ def save_distributions():
     return redirect(url_for('index'))
 
 
+@app.route('/clear_distributions', methods=['POST'])
+@role_required('admin')
+def clear_distributions():
+    try:
+        distribution_repository.delete_all(Distribution)
+        return jsonify({"message": "Таблица distributions успешно очищена."}), 200
+    except Exception as e:
+        logging.error(f"Ошибка при очистке таблицы distributions: {e}")
+        return jsonify({"error": f"Произошла ошибка: {e}"}), 500
+
+
 @app.route('/unassigned_students')
 @role_required('admin')
 def unassigned_students():

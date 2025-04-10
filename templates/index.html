@@ -68,7 +68,7 @@
     <a href="{{url_for('run_main')}}">Запустить алгоритм</a>
     <a href="{{url_for('form_student')}}">Анкета студента </a>
     <a href="{{url_for('login')}}">Вход</a>
-
+    <button id="clear-distributions-btn">Очистить таблицу распределений</button>
 
     <table>
         <tr>
@@ -93,6 +93,32 @@
     </table>
     {% include 'modal_delete.html' %}
     <script src="../static/modal_delete_distribution.js"></script>
+    <script>
+        // Обработчик для кнопки очистки таблицы
+        document.getElementById('clear-distributions-btn').addEventListener('click', async () => {
+            if (confirm("Вы уверены, что хотите очистить таблицу распределений?")) {
+                try {
+                    const response = await fetch('/clear_distributions', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    });
 
+                    const result = await response.json();
+                    if (response.ok) {
+                        alert(result.message);
+                        // Опционально: обновить таблицу на странице
+                        location.reload();
+                    } else {
+                        alert(`Ошибка: ${result.error}`);
+                    }
+                } catch (error) {
+                    console.error('Ошибка при отправке запроса:', error);
+                    alert('Произошла ошибка при очистке таблицы.');
+                }
+            }
+        });
+    </script>
 </body>
 </html>

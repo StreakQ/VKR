@@ -150,10 +150,6 @@ class AdviserRepository(BaseRepository):
         Добавляет нового научного руководителя в базу данных.
         """
         with self.Session() as session:
-            # Проверяем уникальность username
-            if session.query(Adviser).filter_by(username=username).first():
-                raise ValueError(f"Username '{username}' уже существует.")
-
             new_adviser = Adviser(
                 firstname=firstname,
                 lastname=lastname,
@@ -1039,18 +1035,25 @@ class DistributionRepository(BaseRepository):
     def display_all_distributions(self):
         with self.Session() as session:
             try:
-                all_distributions = session.query(Distribution).order_by(
-                    Distribution.distribution_id).all()  # Сортировка по первому ключу
+                all_distributions = session.query(Distribution).order_by(Distribution.student_id).all()
+
                 if not all_distributions:
-                    print("Данных нет")
-                    return  # Выход из метода, если данных нет
-                for distribution in all_distributions:
-                    print(f"ID: {distribution.distribution_id}, "
-                          f"Студент ID: {distribution.student_id}, "
-                          f"Тема ID: {distribution.theme_id}, "
-                          f"Научный руководитель ID: {distribution.adviser_id}")
+                    return []
+
+                distributions_data = [
+                    {
+                        "distribution_id": distribution.distribution_id,
+                        "student_id": distribution.student_id,
+                        "theme_id": distribution.theme_id,
+                        "adviser_id": distribution.adviser_id,
+                    }
+                    for distribution in all_distributions
+                ]
+                return distributions_data
+
             except Exception as e:
                 logging.error(f"Ошибка при получении распределений: {e}")
+                return []
 
     def update_distribution(self, distribution_id, student_id, theme_id, adviser_id):
         session = self.Session()
@@ -1063,7 +1066,7 @@ class DistributionRepository(BaseRepository):
                 session.commit()
         except Exception as e:
             session.rollback()
-            print(f"Error updating distribution: {e}")
+            print(f"Ошибка при обновлении распределений: {e}")
         finally:
             session.close()
 
