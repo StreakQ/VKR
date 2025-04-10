@@ -3,17 +3,19 @@ from importlib.metadata import distribution
 from sqlalchemy import distinct
 from sqlalchemy.orm import sessionmaker
 from models import (Student, Adviser, Subject, Theme,
-                    ThemeSubjectImportance, StudentSubjectGrade, StudentThemeInterest, Distribution, AdviserTheme, DistributionAlgorithm)
+                    ThemeSubjectImportance, StudentSubjectGrade, StudentThemeInterest, Distribution, AdviserTheme,
+                    DistributionAlgorithm)
 from faker import Faker
 import random as rnd
 import logging
 from data import *
 from collections import defaultdict, deque
 import heapq
-
+from werkzeug.security import check_password_hash, generate_password_hash
 
 fake = Faker('ru_RU')
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+
 
 class BaseRepository:
     def __init__(self, engine):
@@ -141,72 +143,134 @@ class StudentRepository(BaseRepository):
             )
 
 
-
-
-
 class AdviserRepository(BaseRepository):
     def __init__(self, engine):
         super().__init__(engine)
 
-    def add_adviser(self, firstname, lastname, patronymic, number_of_places):
+    def add_adviser(self, firstname, lastname, patronymic, number_of_places, username, password_hash):
+        """
+        Добавляет нового научного руководителя с учетом логина и пароля.
+        """
         with self.Session() as session:
-            new_adviser = Adviser(firstname=firstname, lastname=lastname, patronymic=patronymic, number_of_places=number_of_places)
+            new_adviser = Adviser(
+                firstname=firstname,
+                lastname=lastname,
+                patronymic=patronymic,
+                number_of_places=number_of_places,
+                username=username,
+                password_hash=password_hash
+            )
             session.add(new_adviser)
             session.commit()
 
-    def update_adviser(self, adviser_id, firstname=None, lastname=None, patronymic=None, number_of_places=None):
+    def update_adviser(self, adviser_id, firstname=None, lastname=None, patronymic=None, number_of_places=None, username=None, password_hash=None):
+        """
+        Обновляет данные научного руководителя, включая логин и пароль.
+        """
         with self.Session() as session:
-            adviser_record = self.get_by_id(Adviser,adviser_id, id_field="adviser_id")
+            adviser_record = self.get_by_id(Adviser, adviser_id, id_field="adviser_id")
             if adviser_record:
-                if firstname: adviser_record.firstname = firstname
-                if lastname: adviser_record.lastname = lastname
-                if patronymic: adviser_record.patronymic = patronymic
-                if number_of_places is not None: adviser_record.number_of_places = number_of_places
+                if firstname:
+                    adviser_record.firstname = firstname
+                if lastname:
+                    adviser_record.lastname = lastname
+                if patronymic:
+                    adviser_record.patronymic = patronymic
+                if number_of_places is not None:
+                    adviser_record.number_of_places = number_of_places
+                if username:
+                    adviser_record.username = username
+                if password_hash:
+                    adviser_record.password_hash = password_hash
                 session.commit()
 
     def delete_adviser(self, adviser_id):
+        """
+        Удаляет научного руководителя по ID.
+        """
         with self.Session() as session:
-            adviser_record = self.get_by_id(Adviser,adviser_id, id_field="adviser_id")
+            adviser_record = self.get_by_id(Adviser, adviser_id, id_field="adviser_id")
             if adviser_record:
                 session.delete(adviser_record)
                 session.commit()
 
-    def add_initial_advisers(self):
-        for firstname, lastname, patronymic, number_of_places in advisers_data:
-            self.add_adviser(firstname, lastname, patronymic, number_of_places)
+    def add_initial_advisers(self, advisers_data):
+        """
+        Добавляет начальных научных руководителей из предоставленных данных.
+        """
+        for firstname, lastname, patronymic, number_of_places, username, password_hash in advisers_data:
+            self.add_adviser(firstname, lastname, patronymic, number_of_places, username, password_hash)
 
     def display_all_advisers(self):
+        """
+        Выводит информацию о всех научных руководителях.
+        """
         advisers = self.get_all(Adviser)
         for adviser in advisers:
             print(
-                f"ID Руководителя: {adviser.adviser_id}, Имя: {adviser.firstname} {adviser.lastname} {adviser.patronymic}, Мест: "
-                f"{adviser.number_of_places}")
+                f"ID Руководителя: {adviser.adviser_id}, "
+                f"Имя: {adviser.firstname} {adviser.lastname} {adviser.patronymic}, "
+                f"Логин: {adviser.username}, "
+                f"Мест: {adviser.number_of_places}"
+            )
 
     def get_advisers_for_theme(self, theme_id):
+        """
+        Получает всех научных руководителей, связанных с определенной темой.
+        """
         with self.Session() as session:
             return session.query(Adviser).join(AdviserTheme).filter(AdviserTheme.theme_id == theme_id).all()
 
     def decrease_adviser_places(self, adviser_id, session):
+        """
+        Уменьшает количество доступных мест у научного руководителя.
+        """
         adviser_record = self.get_by_adviser_id(adviser_id, session)
         if adviser_record and adviser_record.number_of_places > 0:
             adviser_record.number_of_places -= 1
             session.commit()
 
     def increase_adviser_places(self, adviser_id, session):
+        """
+        Увеличивает количество доступных мест у научного руководителя.
+        """
         adviser_record = self.get_by_adviser_id(adviser_id, session)
         if adviser_record:
             adviser_record.number_of_places += 1
             session.commit()
 
     def get_by_adviser_id(self, adviser_id, session):
+        """
+        Получает научного руководителя по его ID.
+        """
         return session.query(Adviser).filter(Adviser.adviser_id == adviser_id).first()
 
-    def add_adviser_for_app(self,adviser_id,firstname,lastname,patronymic,number_of_places):
+    def authenticate_adviser(self, username, password):
+        """
+        Аутентифицирует научного руководителя по логину и паролю.
+        """
         with self.Session() as session:
-            new_adviser = Adviser(adviser_id=adviser_id,firstname=firstname,lastname=lastname,patronymic=patronymic,number_of_places=number_of_places)
+            adviser = session.query(Adviser).filter_by(username=username).first()
+            if adviser and check_password_hash(adviser.password_hash, password):
+                return adviser
+            return None
+
+    def add_adviser_for_app(self, adviser_id, firstname, lastname, patronymic, number_of_places, username, password_hash):
+        """
+        Добавляет научного руководителя с указанием всех полей.
+        """
+        with self.Session() as session:
+            new_adviser = Adviser(
+                adviser_id=adviser_id,
+                firstname=firstname,
+                lastname=lastname,
+                patronymic=patronymic,
+                number_of_places=number_of_places,
+                username=username,
+                password_hash=password_hash
+            )
             session.add(new_adviser)
             session.commit()
-
 
 
 class SubjectRepository(BaseRepository):
@@ -323,7 +387,6 @@ class AdviserThemeRepository(BaseRepository):
             self.add_adviser_themes(adviser_id, *new_theme_ids)
 
 
-
 class ThemeSubjectImportanceRepository(BaseRepository):
     def __init__(self, engine, theme_repository, subject_repository):
         super().__init__(engine)
@@ -416,6 +479,7 @@ class ThemeSubjectImportanceRepository(BaseRepository):
                 except Exception as e:
                     add_session.rollback()
                     print(f"Ошибка при добавлении: {e}")
+
 
 class StudentSubjectGradeRepository(BaseRepository):
     def __init__(self, engine, student_repository, subject_repository):

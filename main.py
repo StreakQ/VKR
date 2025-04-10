@@ -109,6 +109,7 @@ def main():
     print("\nОставшиеся места после распределения")
     adviser_repository.display_all_advisers()
 
+
 def check_unassigned_students(unassigned_students, adviser_repository, student_theme_interest_repository, student_repository):
     for student_id in unassigned_students:
         student = student_repository.get_by_id(Student,student_id,id_field='student_id')
@@ -142,3 +143,4 @@ if __name__ == "__main__":
 
 
 #TODO: Алгоритм подправить
+#TODO 1: Разделение ролей

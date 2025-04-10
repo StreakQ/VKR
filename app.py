@@ -11,10 +11,10 @@ from openpyxl import Workbook
 from openpyxl.styles import Alignment
 import os
 import subprocess
-from main import check_unassigned_students,main
 from werkzeug.security import check_password_hash
 from config import ADMIN_PASSWORD_HASH,ADMIN_USERNAME
 import json
+from functools import wraps
 
 
 app = Flask(__name__, template_folder='templates')
@@ -371,7 +371,7 @@ def upload_themes():
             file.save(file_path)
             df = pd.read_excel(file_path)
 
-            for index,row in df.iterrows():
+            for indx, row in df.iterrows():
                 theme_name = row['theme_name']
                 theme_repository.add_theme(theme_name=theme_name)
             return redirect(url_for('index'))
@@ -389,7 +389,7 @@ def upload_students():
             file.save(file_path)
             df = pd.read_excel(file_path)
 
-            for index,row in df.iterrows():
+            for indx, row in df.iterrows():
                 student_name = row['student_name']
                 group = row['group']
                 username = row['username']
@@ -418,17 +418,19 @@ def upload_advisers():
             file.save(file_path)
             df = pd.read_excel(file_path)
 
-        for index,row in df.iterrows():
-            adviser_name = row['adviser_name']
-            number_of_places = row['number_of_places']
-            adviser_firstname = adviser_name.split(" ")[0]
-            adviser_lastname = adviser_name.split(" ")[1]
-            adviser_patronymic = adviser_name.split(" ")[2]
-            adviser_repository.add_adviser(firstname=adviser_firstname,
-                                           lastname=adviser_lastname,
-                                           patronymic=adviser_patronymic,
-                                           number_of_places=number_of_places)
-        return redirect(url_for('index'))
+            for indx, row in df.iterrows():
+                adviser_name = row['adviser_name']
+                username = row['username']
+                password = row['password']
+                number_of_places = row['number_of_places']
+                adviser_firstname = adviser_name.split(" ")[0]
+                adviser_lastname = adviser_name.split(" ")[1]
+                adviser_patronymic = adviser_name.split(" ")[2]
+                adviser_repository.add_adviser(firstname=adviser_firstname,
+                                               lastname=adviser_lastname,
+                                               patronymic=adviser_patronymic,
+                                               number_of_places=number_of_places)
+            return redirect(url_for('index'))
     return render_template('upload_advisers.html')
 
 
@@ -494,6 +496,11 @@ def run_main():
     if result.returncode != 0:
         print("Error:", result.stderr)
     return redirect(url_for('index'))
+
+def role_required(role):
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
 
 
 if __name__ == '__main__':

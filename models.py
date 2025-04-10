@@ -4,6 +4,7 @@ from sqlalchemy.orm import relationship
 
 Base = declarative_base()
 
+
 class Student(Base):
     __tablename__ = 'students'
     student_id = Column(Integer, primary_key=True)
@@ -18,9 +19,12 @@ class Student(Base):
     interests = relationship("StudentThemeInterest", back_populates="student")
     distributions = relationship("Distribution", back_populates="student")
 
+
 class Adviser(Base):
     __tablename__ = 'advisers'
     adviser_id = Column(Integer, primary_key=True)
+    username = Column(String, unique=True, nullable=False)
+    password_hash = Column(String, nullable=False)
     firstname = Column(String, nullable=False)
     lastname = Column(String, nullable=False)
     patronymic = Column(String, nullable=False)
@@ -29,6 +33,17 @@ class Adviser(Base):
     adviser_themes = relationship("AdviserTheme", back_populates="adviser")
     distributions = relationship("Distribution", back_populates="adviser")
 
+
+class Admin(Base):
+    __tablename__ = 'admins'
+    admin_id = Column(Integer, primary_key=True)
+    username = Column(String, unique=True, nullable=False)
+    password_hash = Column(String, nullable=False)
+    firstname = Column(String, nullable=False)
+    lastname = Column(String, nullable=False)
+    patronymic = Column(String, nullable=False)
+
+
 class Subject(Base):
     __tablename__ = 'subjects'
     subject_id = Column(Integer, primary_key=True)
@@ -36,6 +51,7 @@ class Subject(Base):
 
     subject_importances = relationship("ThemeSubjectImportance", back_populates="subject")
     student_subject_grades = relationship("StudentSubjectGrade", back_populates="subject")
+
 
 class Theme(Base):
     __tablename__ = 'themes'
@@ -47,6 +63,7 @@ class Theme(Base):
     adviser_themes = relationship("AdviserTheme", back_populates="theme")
     distributions = relationship("Distribution", back_populates="theme")
 
+
 class AdviserTheme(Base):
     __tablename__ = 'adviser_themes'
     adviser_theme_id = Column(Integer, primary_key=True)
@@ -56,6 +73,7 @@ class AdviserTheme(Base):
 
     theme = relationship("Theme", back_populates="adviser_themes")
     adviser = relationship("Adviser", back_populates="adviser_themes")
+
 
 class ThemeSubjectImportance(Base):
     __tablename__ = 'theme_subject_importances'
@@ -67,6 +85,7 @@ class ThemeSubjectImportance(Base):
     theme = relationship("Theme", back_populates="subject_importances")
     subject = relationship("Subject", back_populates="subject_importances")
 
+
 class StudentSubjectGrade(Base):
     __tablename__ = 'student_subjects_grades'
     student_subject_grade_id = Column(Integer, primary_key=True)
@@ -76,6 +95,7 @@ class StudentSubjectGrade(Base):
 
     student = relationship("Student", back_populates="grades")
     subject = relationship("Subject", back_populates="student_subject_grades")
+
 
 class StudentThemeInterest(Base):
     __tablename__ = 'student_theme_interests'
@@ -100,6 +120,7 @@ class Distribution(Base):
     student = relationship("Student", back_populates="distributions")
     theme = relationship("Theme", back_populates="distributions")
     adviser = relationship("Adviser", back_populates="distributions")
+
 
 class DistributionAlgorithm(Base):
     __tablename__ = 'distribution_algorithms'
