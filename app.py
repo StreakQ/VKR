@@ -14,8 +14,7 @@ import subprocess
 from werkzeug.security import check_password_hash
 from config import ADMIN_PASSWORD_HASH,ADMIN_USERNAME
 import json
-from functools import wraps
-
+from decorators import role_required
 
 app = Flask(__name__, template_folder='templates')
 app.secret_key = 'key'
@@ -37,6 +36,7 @@ def home():
 
 
 @app.route('/index')
+@role_required('admin')
 def index():
     with Session() as session:
         distributions = (session.query(Distribution).options(
@@ -71,6 +71,7 @@ def login():
 
 
 @app.route('/assign_importances', methods=["GET", "POST"])
+@role_required('admin')
 def assign_importances():
     if request.method == 'POST':
         try:
@@ -108,6 +109,7 @@ def assign_importances():
 
 
 @app.route("/assign_advisers_to_themes", methods=["GET", "POST"])
+@role_required('admin')
 def assign_advisers_to_themes():
     if request.method == 'POST':
         try:
@@ -150,6 +152,7 @@ def assign_advisers_to_themes():
 
 
 @app.route("/get_subjects")
+@role_required('admin')
 def get_subjects():
     try:
         subjects = subject_repository.get_all(Subject)
@@ -161,6 +164,7 @@ def get_subjects():
 
 
 @app.route("/get_themes", methods=["GET"])
+@role_required('admin')
 def get_themes():
     try:
         themes = theme_repository.get_all(Theme)
@@ -172,6 +176,7 @@ def get_themes():
 
 
 @app.route("/get_advisers", methods=["GET"])
+@role_required('admin')
 def get_advisers():
     try:
         advisers = adviser_repository.get_all(Adviser)
@@ -182,6 +187,7 @@ def get_advisers():
 
 
 @app.route("/get_theme_subject_importances", methods=["GET"])
+@role_required('admin')
 def get_theme_subject_importances():
     try:
         importances = theme_subject_importance_repository.get_all(ThemeSubjectImportance)
@@ -200,18 +206,21 @@ def get_theme_subject_importances():
 
 
 @app.route("/students")
+@role_required('admin')
 def display_students():
     students = student_repository.get_all(Student)
     return render_template('student_data.html', students=students)
 
 
 @app.route("/advisers")
+@role_required('admin')
 def display_advisers():
     advisers = adviser_repository.get_all(Adviser)
     return render_template("adviser_data.html", advisers=advisers)
 
 
 @app.route("/themes")
+@role_required('admin')
 def display_themes():
     themes = theme_repository.get_all(Theme)
     return render_template("theme_data.html", themes=themes)
@@ -224,6 +233,7 @@ def form_student():
 
 
 @app.route("/save_priorities", methods=["POST"])
+@role_required('admin')
 def save_priorities():
     try:
         priorities_data = request.form.get('priorities')
@@ -269,6 +279,7 @@ def save_priorities():
 
 
 @app.route("/add_theme", methods=['GET', 'POST'])
+@role_required('admin')
 def add_theme():
     if request.method == 'POST':
         theme_id = request.form['theme_id']
@@ -279,6 +290,7 @@ def add_theme():
 
 
 @app.route("/add_adviser", methods=['GET', 'POST'])
+@role_required('admin')
 def add_adviser():
     if request.method == 'POST':
         adviser_id = request.form['adviser_id']
@@ -292,6 +304,7 @@ def add_adviser():
 
 
 @app.route('/add_distribution', methods=['GET', 'POST'])
+@role_required('admin')
 def add_distribution():
     if request.method == 'POST':
         student_id = request.form['student_id']
@@ -304,6 +317,7 @@ def add_distribution():
 
 
 @app.route('/update_distribution/<int:distribution_id>', methods=['GET', 'POST'])
+@role_required('admin')
 def update_distribution(distribution_id):
     distribution = distribution_repository.get_by_id(Distribution, distribution_id, id_field="distribution_id")
 
@@ -318,24 +332,28 @@ def update_distribution(distribution_id):
 
 
 @app.route('/delete_adviser/<int:adviser_id>', methods=['POST'])
+@role_required('admin')
 def delete_adviser(adviser_id):
     adviser_repository.delete_adviser(adviser_id)
     return redirect(url_for('display_advisers'))
 
 
 @app.route('/delete_theme/<int:theme_id>', methods=['POST'])
+@role_required('admin')
 def delete_theme(theme_id):
     theme_repository.delete_theme(theme_id)
     return redirect(url_for('display_themes'))
 
 
 @app.route('/delete_distribution/<int:distribution_id>', methods=['POST'])
+@role_required('admin')
 def delete_distribution(distribution_id):
     distribution_repository.delete_distribution(distribution_id)
     return redirect(url_for('index'))
 
 
 @app.route('/upload_distributions', methods=['GET', 'POST'])
+@role_required('admin')
 def upload_distributions():
     if request.method == 'POST':
         file = request.files['file']
@@ -358,6 +376,7 @@ def upload_distributions():
 
 
 @app.route('/upload_themes', methods=['GET', 'POST'])
+@role_required('admin')
 def upload_themes():
     if request.method == 'POST':
         file = request.files['file']
@@ -376,6 +395,7 @@ def upload_themes():
 
 
 @app.route('/upload_students', methods=['GET', 'POST'])
+@role_required('admin')
 def upload_students():
     if request.method == 'POST':
         file = request.files['file']
@@ -406,6 +426,7 @@ def upload_students():
 
 
 @app.route('/upload_advisers', methods=['GET', 'POST'])
+@role_required('admin')
 def upload_advisers():
     if request.method == 'POST':
         file = request.files['file']
@@ -435,6 +456,7 @@ def upload_advisers():
 
 
 @app.route('/save_distributions', methods=['GET'])
+@role_required('admin')
 def save_distributions():
     with Session() as session:
         distributions = (
@@ -482,6 +504,7 @@ def save_distributions():
 
 
 @app.route('/unassigned_students')
+@role_required('admin')
 def unassigned_students():
     unassigned_info = session.get('unassigned_students', None)
     if unassigned_info is None:
@@ -490,27 +513,13 @@ def unassigned_students():
 
 
 @app.route("/run_main")
+@role_required('admin')
 def run_main():
     result = subprocess.run([r'C:\PycharmProjects\vkr\.venv\Scripts\python.exe', r'C:\PycharmProjects\vkr\main.py'],
                             capture_output=True, text=True)
     if result.returncode != 0:
         print("Error:", result.stderr)
     return redirect(url_for('index'))
-
-
-def role_required(role):
-    """
-    Декоратор для проверки роли пользователя
-    :param role: Требуемая роль
-    """
-    def decorator(f):
-        @wraps(f)
-        def decorated_function(*args, **kwargs):
-            if 'role' not in session or session.get('role') != role:
-                return redirect(url_for('login'))
-            return f(*args, **kwargs)
-        return decorated_function
-    return decorator
 
 
 if __name__ == '__main__':

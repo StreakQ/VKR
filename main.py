@@ -1,11 +1,13 @@
 from sqlalchemy import create_engine
 from models import Base
-from repositories import (StudentRepository,SubjectRepository,ThemeRepository,AdviserRepository,
-                          StudentSubjectGradeRepository,StudentThemeInterestRepository,ThemeSubjectImportanceRepository,
-                          AdviserThemeRepository,DistributionRepository,DistributionAlgorithmRepository)
+from repositories import (StudentRepository, SubjectRepository, ThemeRepository, AdviserRepository,
+                          StudentSubjectGradeRepository, StudentThemeInterestRepository,
+                          ThemeSubjectImportanceRepository, AdviserThemeRepository, DistributionRepository,
+                          DistributionAlgorithmRepository)
 import random as rnd
 from models import *
-from config import passwords,logins
+from config import stud_logins, stud_passwords, adviser_logins, adviser_passwords
+from data import advisers_with_credentials
 
 
 def main():
@@ -39,9 +41,9 @@ def main():
     distribution_repository.delete_all(Distribution)
 
     # Добавляем начальные данные
-    student_repository.add_initial_students(logins=logins,passwords=passwords,count=50)
+    student_repository.add_initial_students(logins=stud_logins, passwords=stud_passwords, count=50)
     subject_repository.add_initial_subjects()
-    adviser_repository.add_initial_advisers()
+    adviser_repository.add_initial_advisers(advisers_data=advisers_with_credentials)
     theme_repository.add_initial_themes()
 
     # Получаем данные из репозиториев

@@ -1,6 +1,4 @@
-from importlib.metadata import distribution
 
-from sqlalchemy import distinct
 from sqlalchemy.orm import sessionmaker
 from models import (Student, Adviser, Subject, Theme,
                     ThemeSubjectImportance, StudentSubjectGrade, StudentThemeInterest, Distribution, AdviserTheme,
@@ -11,7 +9,7 @@ import logging
 from data import *
 from collections import defaultdict, deque
 import heapq
-from werkzeug.security import check_password_hash, generate_password_hash
+from werkzeug.security import check_password_hash
 
 fake = Faker('ru_RU')
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -149,9 +147,13 @@ class AdviserRepository(BaseRepository):
 
     def add_adviser(self, firstname, lastname, patronymic, number_of_places, username, password_hash):
         """
-        Добавляет нового научного руководителя с учетом логина и пароля.
+        Добавляет нового научного руководителя в базу данных.
         """
         with self.Session() as session:
+            # Проверяем уникальность username
+            if session.query(Adviser).filter_by(username=username).first():
+                raise ValueError(f"Username '{username}' уже существует.")
+
             new_adviser = Adviser(
                 firstname=firstname,
                 lastname=lastname,
@@ -197,9 +199,17 @@ class AdviserRepository(BaseRepository):
     def add_initial_advisers(self, advisers_data):
         """
         Добавляет начальных научных руководителей из предоставленных данных.
+        :param advisers_data: Список словарей с данными научных руководителей.
         """
-        for firstname, lastname, patronymic, number_of_places, username, password_hash in advisers_data:
-            self.add_adviser(firstname, lastname, patronymic, number_of_places, username, password_hash)
+        for adviser in advisers_data:
+            self.add_adviser(
+                firstname=adviser["firstname"],
+                lastname=adviser["lastname"],
+                patronymic=adviser["patronymic"],
+                number_of_places=adviser["number_of_places"],
+                username=adviser["username"],
+                password_hash=adviser["password_hash"]
+            )
 
     def display_all_advisers(self):
         """
