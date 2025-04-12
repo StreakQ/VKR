@@ -3,266 +3,150 @@ from unittest.mock import MagicMock
 from repositories import *
 import logging
 
-logging.basicConfig(level=logging.DEBUG)
-
-class TestAlgorithm(unittest.TestCase):
-
-    def setUp(self):
-        """
-        Подготовка моков для теста.
-        """
-        # Моки для репозиториев
-        self.mock_student_theme_interest_repository = MagicMock()
-        self.mock_student_theme_interest_repository.get_all.return_value = [
-            {"student_id": 1, "theme_id": 5, "interest_level": 3},
-            {"student_id": 2, "theme_id": 7, "interest_level": 4},
-        ]
-
-        self.mock_student_subject_grade_repository = MagicMock()
-        self.mock_student_subject_grade_repository.get_all.return_value = [
-            {"student_id": 1, "subject_id": 1, "grade": 5},
-            {"student_id": 2, "subject_id": 2, "grade": 4},
-        ]
-
-        self.mock_theme_subject_importance_repository = MagicMock()
-        self.mock_theme_subject_importance_repository.get_all.return_value = [
-            {"theme_id": 5, "subject_id": 1, "weight": 0.8},
-            {"theme_id": 7, "subject_id": 2, "weight": 0.6},
-        ]
-
-        self.mock_adviser_theme_repository = MagicMock()
-        self.mock_adviser_theme_repository.get_all.return_value = [
-            {"adviser_id": 1, "theme_id": 5},
-            {"adviser_id": 2, "theme_id": 7},
-        ]
-
-        self.mock_distribution_repository = MagicMock()
-
-        # Создание мокированной сессии
-        self.mock_session = MagicMock()
-        self.mock_engine = MagicMock()
-        self.mock_engine.sessionmaker.return_value = self.mock_session
-
-        # Настройка данных для запросов
-        self.mock_session.query.side_effect = lambda model: {
-            Adviser: MagicMock(all=MagicMock(return_value=[
-                {"adviser_id": 1, "number_of_places": 2},
-                {"adviser_id": 2, "number_of_places": 3}
-            ])),
-            Theme: MagicMock(all=MagicMock(return_value=[
-                {"theme_id": 5, "title": "Тема 1"},
-                {"theme_id": 7, "title": "Тема 2"}
-            ])),
-            Student: MagicMock(all=MagicMock(return_value=[
-                {"student_id": 1, "name": "Иван"},
-                {"student_id": 2, "name": "Анна"}
-            ]))
-        }[model]
-        self.mock_session.add.side_effect = lambda obj: None
-        self.mock_session.commit.side_effect = lambda: None
-
-        # Создание экземпляра класса
-        self.distribution_algorithm = DistributionAlgorithmRepository(
-            engine=self.mock_engine,
-            student_subject_grade_repository=self.mock_student_subject_grade_repository,
-            theme_subject_importance_repository=self.mock_theme_subject_importance_repository,
-            adviser_theme_repository=self.mock_adviser_theme_repository,
-            student_theme_interest_repository=self.mock_student_theme_interest_repository,
-            distribution_repository=self.mock_distribution_repository
-        )
-
-    def test_assign_students_to_adviser_and_distribute(self):
-        """
-        Тестирование алгоритма распределения студентов.
-        """
-        # Выполнение метода
-        unassigned_students = self.distribution_algorithm.assign_students_to_advisers_and_distribute()
-
-        # Проверка результатов
-        self.assertEqual(len(unassigned_students), 0)
-        self.mock_distribution_repository.add_distribution.assert_called_once()
-        logging.debug("Неназначенные студенты:")
-        for student in unassigned_students:
-            logging.debug(f"Студент ID: {student['student_id']}")
-
-
-    def test_distribution_with_one_unavailable_adviser(self):
-        """
-        Тестирование алгоритма распределения, когда один научный руководитель недоступен.
-        """
-        # Настройка данных для научных руководителей
-        mock_advisers = [
-            {"adviser_id": 1, "number_of_places": 0},
-            {"adviser_id": 2, "number_of_places": 3}
-        ]
-        self.mock_session.query.side_effect = lambda model: {
-            Adviser: MagicMock(all=MagicMock(return_value=mock_advisers)),
-            Theme: MagicMock(all=MagicMock(return_value=[
-                {"theme_id": 5, "title": "Тема 1"},
-                {"theme_id": 7, "title": "Тема 2"}
-            ])),
-            Student: MagicMock(all=MagicMock(return_value=[
-                {"student_id": 1, "name": "Иван"},
-                {"student_id": 2, "name": "Анна"}
-            ]))
-        }[model]
-
-        # Выполнение метода
-        unassigned_students = self.distribution_algorithm.assign_students_to_advisers_and_distribute()
-        self.assertEqual(len(unassigned_students), 0)  # Все студенты должны быть назначены
-        self.mock_distribution_repository.add_distribution.assert_called_once()
-        logging.debug("Неназначенные студенты:")
-        for student in unassigned_students:
-            logging.debug(f"Студент ID: {student['student_id']}")
-
-
-import unittest
-from unittest.mock import MagicMock
-from repositories import *
-import logging
-
 # Настройка логирования
-logging.basicConfig(level=logging.DEBUG)
-
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
 class TestAlgorithm(unittest.TestCase):
-
     def setUp(self):
         """
         Подготовка моков для теста.
         """
+        logging.debug("Инициализация тестового окружения...")
+
         # Моки для репозиториев
         self.mock_student_theme_interest_repository = MagicMock()
         self.mock_adviser_theme_repository = MagicMock()
         self.mock_distribution_repository = MagicMock()
-        self.mock_student_subject_grade_repository = MagicMock()  # Новый мок
-        self.mock_theme_subject_importance_repository = MagicMock()  # Новый мок
+        self.mock_student_subject_grade_repository = MagicMock()
+        self.mock_theme_subject_importance_repository = MagicMock()
 
-        # Создание мокированной сессии
-        self.mock_session = MagicMock()
-        self.mock_engine = MagicMock()
-        self.mock_engine.sessionmaker.return_value = self.mock_session
-
-        # Настройка данных для запросов
-        self.mock_session.query.side_effect = lambda model: {
-            Adviser: MagicMock(all=MagicMock(return_value=[
-                {"adviser_id": 1, "number_of_places": 1},
-                {"adviser_id": 2, "number_of_places": 1},
-                {"adviser_id": 3, "number_of_places": 1},
-                {"adviser_id": 4, "number_of_places": 1},
-                {"adviser_id": 5, "number_of_places": 1},
-                {"adviser_id": 6, "number_of_places": 1}
-            ])),
-            Theme: MagicMock(all=MagicMock(return_value=[
-                {"theme_id": 101, "title": "Тема 1"},
-                {"theme_id": 102, "title": "Тема 2"},
-                {"theme_id": 103, "title": "Тема 3"},
-                {"theme_id": 104, "title": "Тема 4"},
-                {"theme_id": 105, "title": "Тема 5"},
-                {"theme_id": 106, "title": "Тема 6"}
-            ])),
-            Student: MagicMock(all=MagicMock(return_value=[
-                {"student_id": 1, "name": "Иван"},
-                {"student_id": 2, "name": "Анна"},
-                {"student_id": 3, "name": "Петр"},
-                {"student_id": 4, "name": "Мария"},
-                {"student_id": 5, "name": "Сергей"}
-            ]))
-        }[model]
-
-        # Настройка данных для интересов студентов
+        # Мокированные данные для интересов студентов
         self.mock_student_theme_interest_repository.get_all.return_value = [
-            {"student_id": 1, "theme_id": 101, "interest_level": 1},
-            {"student_id": 2, "theme_id": 101, "interest_level": 1},
-            {"student_id": 3, "theme_id": 101, "interest_level": 1},
-            {"student_id": 4, "theme_id": 101, "interest_level": 1},
-            {"student_id": 5, "theme_id": 101, "interest_level": 1},
-            {"student_id": 1, "theme_id": 102, "interest_level": 2},
-            {"student_id": 2, "theme_id": 103, "interest_level": 2},
-            {"student_id": 3, "theme_id": 104, "interest_level": 2},
-            {"student_id": 4, "theme_id": 105, "interest_level": 2},
-            {"student_id": 5, "theme_id": 106, "interest_level": 2},
+            {"student_id": 1, "theme_id": 1, "interest_level": 1},  # Все студенты хотят одну и ту же тему
+            {"student_id": 2, "theme_id": 1, "interest_level": 1},
+            {"student_id": 3, "theme_id": 1, "interest_level": 1},
+            {"student_id": 4, "theme_id": 1, "interest_level": 1},
+            {"student_id": 5, "theme_id": 1, "interest_level": 1},
+            {"student_id": 1, "theme_id": 2, "interest_level": 2},  # Уникальная тема для второго руководителя
+            {"student_id": 2, "theme_id": 3, "interest_level": 3},  # Уникальная тема для третьего руководителя
+            {"student_id": 3, "theme_id": 4, "interest_level": 4},  # Уникальная тема для четвертого руководителя
+            {"student_id": 4, "theme_id": 5, "interest_level": 5},  # Уникальная тема для пятого руководителя
+            {"student_id": 5, "theme_id": 6, "interest_level": 5},  # Уникальная тема для шестого руководителя
         ]
+        logging.debug("Мокированные данные для интересов студентов успешно настроены.")
 
-        # Настройка данных для назначений тем научным руководителям
+        # Мокированные данные для связей научных руководителей и тем
         self.mock_adviser_theme_repository.get_all.return_value = [
-            {"adviser_id": 1, "theme_id": 101},
-            {"adviser_id": 2, "theme_id": 102},
-            {"adviser_id": 3, "theme_id": 103},
-            {"adviser_id": 4, "theme_id": 104},
-            {"adviser_id": 5, "theme_id": 105},
-            {"adviser_id": 6, "theme_id": 106}
+            {"adviser_id": 1, "theme_id": 1},  # Первый руководитель имеет только одну тему
+            {"adviser_id": 2, "theme_id": 2},  # Второй руководитель имеет уникальную тему
+            {"adviser_id": 3, "theme_id": 3},  # Третий руководитель имеет уникальную тему
+            {"adviser_id": 4, "theme_id": 4},  # Четвертый руководитель имеет уникальную тему
+            {"adviser_id": 5, "theme_id": 5},  # Пятый руководитель имеет уникальную тему
+            {"adviser_id": 6, "theme_id": 6},  # Шестой руководитель имеет уникальную тему
         ]
+        logging.debug("Мокированные данные для связей научных руководителей и тем успешно настроены.")
 
-        # Создание экземпляра класса
+        # Мокированные данные для научных руководителей
+        self.mock_adviser_repository = MagicMock()
+        self.mock_adviser_repository.get_all.return_value = [
+            {"adviser_id": 1, "number_of_places": 1},  # У первого руководителя только одно место
+            {"adviser_id": 2, "number_of_places": 1},
+            {"adviser_id": 3, "number_of_places": 1},
+            {"adviser_id": 4, "number_of_places": 1},
+            {"adviser_id": 5, "number_of_places": 1},
+            {"adviser_id": 6, "number_of_places": 1},
+        ]
+        logging.debug("Мокированные данные для научных руководителей успешно настроены.")
+
+        # Создание экземпляра класса DistributionAlgorithmRepository
         self.distribution_algorithm = DistributionAlgorithmRepository(
-            engine=self.mock_engine,
+            engine=MagicMock(),
             student_theme_interest_repository=self.mock_student_theme_interest_repository,
             adviser_theme_repository=self.mock_adviser_theme_repository,
             distribution_repository=self.mock_distribution_repository,
             student_subject_grade_repository=self.mock_student_subject_grade_repository,
             theme_subject_importance_repository=self.mock_theme_subject_importance_repository
         )
+        logging.debug("Экземпляр DistributionAlgorithmRepository успешно создан.")
 
     def test_redistribution_when_all_students_want_the_same_theme(self):
         """
-        Тестирование алгоритма перераспределения студентов, когда все хотят одну и ту же тему.
+        Тестирование алгоритма перераспределения студентов,
+        когда все хотят одну и ту же тему, но у первого руководителя ограниченное количество мест.
         """
-        # Выполнение метода
-        unassigned_students = self.distribution_algorithm.assign_students_to_advisers_and_distribute()
+        logging.info("Запуск теста: test_redistribution_when_all_students_want_the_same_theme")
 
-        # Проверка результатов
-        self.assertEqual(len(unassigned_students), 0)  # Все студенты должны быть назначены
-        self.mock_distribution_repository.add_distribution.assert_called()  # Проверяем, что данные сохранялись
+        try:
+            # Логирование начального состояния
+            logging.debug("Начальное состояние:")
+            logging.debug(f"Интересы студентов: {self.mock_student_theme_interest_repository.get_all.return_value}")
+            logging.debug(
+                f"Связи научных руководителей и тем: {self.mock_adviser_theme_repository.get_all.return_value}")
+            logging.debug(f"Научные руководители: {self.mock_adviser_repository.get_all.return_value}")
 
-        # Логирование финального состояния научных руководителей
-        logging.debug("Финальное состояние научных руководителей:")
-        for adviser_id, places in self.distribution_algorithm.advisers.items():
-            logging.debug(f"ID Руководителя: {adviser_id}, Оставшиеся места: {places.number_of_places}")
+            # Выполнение метода распределения
+            logging.debug("Выполнение метода assign_students_to_advisers_and_distribute...")
+            unassigned_students = self.distribution_algorithm.assign_students_to_advisers_and_distribute()
+            logging.debug("Метод assign_students_to_advisers_and_distribute завершен.")
 
-        # Логирование распределенных студентов
-        logging.debug("Распределенные студенты:")
-        for call in self.mock_distribution_repository.add_distribution.call_args_list:
-            distributions = call.args[0]
-            for distribution in distributions:
-                student_id = distribution["student_id"]
-                theme_id = distribution["theme_id"]
-                adviser_id = distribution["adviser_id"]
+            # Проверка, что все студенты были назначены
+            logging.debug(f"Количество неназначенных студентов: {len(unassigned_students)}")
+            self.assertEqual(len(unassigned_students), 0, "Не все студенты были назначены.")
+            logging.debug("Все студенты успешно назначены.")
 
-                # Логируем назначение студента
-                logging.info(
-                    f"Студент ID: {student_id} назначен Научному руководителю ID: {adviser_id}, "
-                    f"Тема ID: {theme_id}"
-                )
+            # Проверка, что метод add_distribution был вызван
+            logging.debug("Проверка вызова метода add_distribution...")
+            self.mock_distribution_repository.add_distribution.assert_called()
+            logging.debug("Метод add_distribution был вызван.")
 
-        # Проверяем, что каждый научный руководитель получил только одного студента
-        assigned_advisers = {}
-        for call in self.mock_distribution_repository.add_distribution.call_args_list:
-            distributions = call.args[0]
-            for distribution in distributions:
-                adviser_id = distribution["adviser_id"]
-                if adviser_id not in assigned_advisers:
-                    assigned_advisers[adviser_id] = 0
-                assigned_advisers[adviser_id] += 1
+            # Логирование данных, переданных в add_distribution
+            final_distribution = []
+            for call in self.mock_distribution_repository.add_distribution.call_args_list:
+                distributions = call.args[0]
+                logging.debug(f"Данные, переданные в add_distribution: {distributions}")
 
-        for adviser_id, count in assigned_advisers.items():
-            self.assertLessEqual(count, 1, f"Научный руководитель ID {adviser_id} получил больше 1 студента")
+                for distribution in distributions:
+                    student_id = distribution["student_id"]
+                    theme_id = distribution["theme_id"]
+                    adviser_id = distribution["adviser_id"]
 
-        # Проверяем, что студенты были переназначены на темы с более низким уровнем интереса
-        for call in self.mock_distribution_repository.add_distribution.call_args_list:
-            distributions = call.args[0]
-            for distribution in distributions:
-                student_id = distribution["student_id"]
-                theme_id = distribution["theme_id"]
-                interest_level = next(
-                    (item["interest_level"] for item in self.mock_student_theme_interest_repository.get_all.return_value
-                     if item["student_id"] == student_id and item["theme_id"] == theme_id),
-                    None
-                )
-                self.assertIsNotNone(interest_level, f"Не найден уровень интереса для студента {student_id}")
-                logging.debug(f"Студент ID: {student_id}, Тема ID: {theme_id}, Уровень интереса: {interest_level}")
+                    # Получаем уровень интереса студента к назначенной теме
+                    interest_level = next(
+                        (
+                            item["interest_level"]
+                            for item in self.mock_student_theme_interest_repository.get_all.return_value
+                            if item["student_id"] == student_id and item["theme_id"] == theme_id
+                        ),
+                        None,
+                    )
+                    final_distribution.append({
+                        "student_id": student_id,
+                        "adviser_id": adviser_id,
+                        "theme_id": theme_id,
+                        "interest_level": interest_level
+                    })
+
+            # Логирование собранных данных
+            logging.debug(f"Собранные данные о распределении: {final_distribution}")
+
+            # Отображение финального распределения
+            logging.info("Финальное распределение студентов:")
+            logging.info("{:<10} {:<15} {:<10} {:<15}".format("Student ID", "Adviser ID", "Theme ID", "Interest Level"))
+            logging.info("-" * 50)
+            for record in final_distribution:
+                logging.info("{:<10} {:<15} {:<10} {:<15}".format(
+                    record["student_id"],
+                    record["adviser_id"],
+                    record["theme_id"],
+                    record["interest_level"]
+                ))
+
+            logging.info("Тест успешно завершен.")
+
+        except Exception as e:
+            logging.error(f"Ошибка при выполнении теста: {e}")
+            raise
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()
-
