@@ -579,14 +579,15 @@ class StudentThemeInterestRepository(BaseRepository):
 
 
 class DistributionAlgorithmRepository(BaseRepository):
-    def __init__(self,engine, student_subject_grade_repository, student_theme_interest_repository,
-                 theme_subject_importance_repository, adviser_theme_repository,distribution_repository):
+    def __init__(self, engine, student_subject_grade_repository, student_theme_interest_repository,
+                 theme_subject_importance_repository, adviser_theme_repository, distribution_repository):
         super().__init__(engine)
         self.distribution_repository = distribution_repository
         self.student_grade_record_repository = student_subject_grade_repository
         self.student_theme_interest_repository = student_theme_interest_repository
         self.theme_subject_importance_repository = theme_subject_importance_repository
         self.adviser_theme_repository = adviser_theme_repository
+        self.advisers = {}
 
     def create_distribution_algorithm(self):
         with self.Session() as session:
@@ -875,8 +876,6 @@ class DistributionAlgorithmRepository(BaseRepository):
                 adviser = advisers[best_adv]
                 adviser.number_of_places -= 1
                 session.commit()
-
-        
 
     def assign_students_to_advisers_and_distribute(self):
         sorted_results = self.link_weighted_grades_with_interest()

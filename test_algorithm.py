@@ -200,8 +200,8 @@ class TestAlgorithm(unittest.TestCase):
             student_theme_interest_repository=self.mock_student_theme_interest_repository,
             adviser_theme_repository=self.mock_adviser_theme_repository,
             distribution_repository=self.mock_distribution_repository,
-            student_subject_grade_repository=self.mock_student_subject_grade_repository,  # Добавлено
-            theme_subject_importance_repository=self.mock_theme_subject_importance_repository  # Добавлено
+            student_subject_grade_repository=self.mock_student_subject_grade_repository,
+            theme_subject_importance_repository=self.mock_theme_subject_importance_repository
         )
 
     def test_redistribution_when_all_students_want_the_same_theme(self):
@@ -266,5 +266,3 @@ class TestAlgorithm(unittest.TestCase):
 if __name__ == '__main__':
     unittest.main()
 
-if __name__ == '__main__':
-    unittest.main()
