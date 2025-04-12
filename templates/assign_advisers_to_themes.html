@@ -33,120 +33,54 @@
         </tr>
       </thead>
       <tbody>
-        <!-- Строки будут добавляться динамически -->
+        <!-- Отображение существующих назначений -->
+        {% for adviser_id, theme_ids in grouped_assignments.items() %}
+          <tr class="adviser-row">
+            <!-- Выпадающий список научных руководителей -->
+            <td>
+              <select name="adviser_{{ loop.index }}" class="adviser-dropdown">
+                {% for adviser in advisers %}
+                  <option value="{{ adviser.adviser_id }}"
+                    {% if adviser.adviser_id == adviser_id %}selected{% endif %}>
+                    {{ adviser.firstname }} {{ adviser.lastname }}
+                  </option>
+                {% endfor %}
+              </select>
+            </td>
+            <!-- Темы -->
+            <td>
+              <div class="themes-container">
+                {% for theme_id in theme_ids %}
+                  <div class="theme-row">
+                    <select name="theme_{{ loop.index0 }}[]" class="theme-dropdown">
+                      {% for theme in themes %}
+                        <option value="{{ theme.theme_id }}"
+                          {% if theme.theme_id == theme_id %}selected{% endif %}>
+                          {{ theme.theme_name }}
+                        </option>
+                      {% endfor %}
+                    </select>
+                    <button type="button" onclick="removeThemeRow(this)">Удалить</button>
+                  </div>
+                {% endfor %}
+              </div>
+              <button type="button" onclick="addThemeRow(this)">Добавить тему</button>
+            </td>
+            <!-- Действия -->
+            <td>
+              <button type="button" onclick="removeAdviserRow(this)">Удалить</button>
+            </td>
+          </tr>
+        {% endfor %}
       </tbody>
     </table>
+    <button type="button" onclick="addAdviserWithThemes()">Добавить научного руководителя</button>
     <button type="submit">Сохранить</button>
   </form>
 
   <script>
-    let advisers = [];
-    let themes = [];
-    let adviserIndex = 0;
-
-    // Загрузка научных руководителей
-    async function loadAdvisers() {
-      try {
-        const response = await fetch("/get_advisers");
-        if (!response.ok) {
-          throw new Error("Ошибка при загрузке научных руководителей");
-        }
-        advisers = await response.json();
-      } catch (error) {
-        console.error(error);
-      }
-    }
-
-    // Загрузка тем
-    async function loadThemes() {
-      try {
-        const response = await fetch("/get_themes");
-        if (!response.ok) {
-          throw new Error("Ошибка при загрузке тем");
-        }
-        themes = await response.json();
-      } catch (error) {
-        console.error(error);
-      }
-    }
-
-    // Загрузка существующих назначений
-    async function loadAssignments() {
-      try {
-        const response = await fetch("/get_adviser_theme_assignments");
-        if (!response.ok) {
-          throw new Error("Ошибка при загрузке назначений");
-        }
-        const assignments = await response.json();
-
-        // Группируем назначения по научным руководителям
-        const groupedAssignments = {};
-        assignments.forEach(assignment => {
-          if (!groupedAssignments[assignment.adviser_id]) {
-            groupedAssignments[assignment.adviser_id] = [];
-          }
-          groupedAssignments[assignment.adviser_id].push(assignment.theme_id);
-        });
-
-        // Отображаем назначения
-        for (const [adviserId, themeIds] of Object.entries(groupedAssignments)) {
-          addAdviserWithThemes(adviserId, themeIds);
-        }
-      } catch (error) {
-        console.error(error);
-      }
-    }
-
-    // Функция для создания выпадающего списка научных руководителей
-    function createAdviserDropdown() {
-    const select = document.createElement("select");
-    select.className = "adviser-dropdown";
-
-    // Добавляем пустой вариант
-    const defaultOption = document.createElement("option");
-    defaultOption.value = "";
-    defaultOption.text = "-- Выберите научного руководителя --";
-    select.appendChild(defaultOption);
-
-    // Добавляем научных руководителей
-    advisers.forEach(adviser => {
-        const option = document.createElement("option");
-        option.value = adviser.id;
-
-        // Формируем полное имя
-        const fullname = `${adviser.firstname || ""} ${adviser.lastname || ""} ${adviser.patronymic || ""}`.trim();
-        option.text = fullname;
-
-        select.appendChild(option);
-    });
-
-    return select;
-}
-
-    // Функция для создания выпадающего списка тем
-    function createThemeDropdown() {
-      const select = document.createElement("select");
-      select.className = "theme-dropdown";
-
-      // Добавляем пустой вариант
-      const defaultOption = document.createElement("option");
-      defaultOption.value = "";
-      defaultOption.text = "-- Выберите тему --";
-      select.appendChild(defaultOption);
-
-      // Добавляем темы
-      themes.forEach(theme => {
-        const option = document.createElement("option");
-        option.value = theme.id;
-        option.text = theme.name;
-        select.appendChild(option);
-      });
-
-      return select;
-    }
-
     // Функция для добавления нового научного руководителя с темами
-    function addAdviserWithThemes(adviserId = null, themeIds = []) {
+    function addAdviserWithThemes() {
       const tableBody = document.querySelector("#advisers_to_themes_table tbody");
 
       // Создаем строку для научного руководителя
@@ -155,10 +89,24 @@
 
       // Ячейка с выпадающим списком научных руководителей
       const adviserCell = document.createElement("td");
-      const adviserSelect = createAdviserDropdown();
-      if (adviserId) {
-        adviserSelect.value = adviserId; // Устанавливаем выбранного научного руководителя
-      }
+      const adviserSelect = document.createElement("select");
+      adviserSelect.name = "adviser_new";
+      adviserSelect.className = "adviser-dropdown";
+
+      // Добавляем пустой вариант
+      const defaultOption = document.createElement("option");
+      defaultOption.value = "";
+      defaultOption.text = "-- Выберите научного руководителя --";
+      adviserSelect.appendChild(defaultOption);
+
+      // Добавляем научных руководителей
+      {% for adviser in advisers %}
+        const option = document.createElement("option");
+        option.value = "{{ adviser.adviser_id }}";
+        option.text = "{{ adviser.firstname }} {{ adviser.lastname }}";
+        adviserSelect.appendChild(option);
+      {% endfor %}
+
       adviserCell.appendChild(adviserSelect);
       adviserRow.appendChild(adviserCell);
 
@@ -166,11 +114,6 @@
       const themesCell = document.createElement("td");
       const themesContainer = document.createElement("div");
       themesContainer.className = "themes-container";
-
-      // Добавляем темы
-      themeIds.forEach(themeId => {
-        addThemeRow(themesContainer, themeId);
-      });
 
       // Кнопка добавления темы
       const addThemeButton = document.createElement("button");
@@ -184,40 +127,63 @@
 
       // Пустая ячейка для действий
       const actionsCell = document.createElement("td");
+      const removeButton = document.createElement("button");
+      removeButton.type = "button";
+      removeButton.textContent = "Удалить";
+      removeButton.onclick = () => tableBody.removeChild(adviserRow);
+      actionsCell.appendChild(removeButton);
+
       adviserRow.appendChild(actionsCell);
 
       tableBody.appendChild(adviserRow);
     }
 
     // Функция для добавления строки с темой
-    function addThemeRow(container, selectedThemeId = null) {
-      const themeRow = document.createElement("div");
-      themeRow.className = "theme-row";
+    function addThemeRow(container) {
+    const themeRow = document.createElement("div");
+    themeRow.className = "theme-row";
 
-      // Выпадающий список тем
-      const themeSelect = createThemeDropdown();
-      if (selectedThemeId) {
-        themeSelect.value = selectedThemeId; // Устанавливаем выбранную тему
-      }
+    // Выпадающий список тем
+    const themeSelect = document.createElement("select");
+    themeSelect.name = "theme_new[]"; // Уникальное имя для новой темы
+    themeSelect.className = "theme-dropdown";
 
-      // Кнопка удаления темы
-      const removeButton = document.createElement("button");
-      removeButton.type = "button";
-      removeButton.textContent = "Удалить";
-      removeButton.onclick = () => container.removeChild(themeRow);
+    // Добавляем пустой вариант
+    const defaultOption = document.createElement("option");
+    defaultOption.value = "";
+    defaultOption.text = "-- Выберите тему --";
+    themeSelect.appendChild(defaultOption);
 
-      themeRow.appendChild(themeSelect);
-      themeRow.appendChild(removeButton);
+    // Добавляем темы
+    {% for theme in themes %}
+      const option = document.createElement("option");
+      option.value = "{{ theme.theme_id }}";
+      option.text = "{{ theme.theme_name }}";
+      themeSelect.appendChild(option);
+    {% endfor %}
 
-      container.appendChild(themeRow);
+    // Кнопка удаления темы
+    const removeButton = document.createElement("button");
+    removeButton.type = "button";
+    removeButton.textContent = "Удалить";
+    removeButton.onclick = () => container.removeChild(themeRow);
+
+    themeRow.appendChild(themeSelect);
+    themeRow.appendChild(removeButton);
+
+    container.appendChild(themeRow);
+  }
+    // Функция для удаления строки с научным руководителем
+    function removeAdviserRow(button) {
+      const row = button.closest("tr");
+      row.remove();
     }
 
-    // Загружаем данные при загрузке страницы
-    window.onload = async () => {
-      await loadAdvisers();
-      await loadThemes();
-      await loadAssignments();
-    };
+    // Функция для удаления строки с темой
+    function removeThemeRow(button) {
+      const row = button.closest(".theme-row");
+      row.remove();
+    }
   </script>
 </body>
 </html>

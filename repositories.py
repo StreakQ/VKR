@@ -598,7 +598,7 @@ class DistributionAlgorithmRepository(BaseRepository):
 
     def link_theme_subject_importance_with_student_subject_grade(self):
         suitability_scores = {}
-        with self.student_grade_record_repository.Session() as session:
+        with self.student_grade_record_repository.DBSession() as session:
             theme_subject_importance_records = session.query(ThemeSubjectImportance).all()
             student_subject_grade_records = session.query(StudentSubjectGrade).all()
 
@@ -645,7 +645,7 @@ class DistributionAlgorithmRepository(BaseRepository):
 
     def link_weighted_grades_with_interest(self):
         student_scores = {}  # Словарь для хранения данных о студентах
-        with self.student_theme_interest_repository.Session() as session:
+        with self.student_theme_interest_repository.DBSession() as session:
             suitability_scores = self.link_theme_subject_importance_with_student_subject_grade()
             student_theme_interests = session.query(StudentThemeInterest).all()
 

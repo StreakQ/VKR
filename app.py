@@ -19,7 +19,7 @@ from decorators import role_required
 app = Flask(__name__, template_folder='templates')
 app.secret_key = 'key'
 engine = create_engine('sqlite:///database.db')
-Session = sessionmaker(bind=engine)
+DBSession = sessionmaker(bind=engine)
 distribution_repository = DistributionRepository(engine)
 student_repository = StudentRepository(engine)
 adviser_repository = AdviserRepository(engine)
@@ -38,7 +38,7 @@ def home():
 @app.route('/index')
 @role_required('admin')
 def index():
-    with Session() as session:
+    with DBSession() as session:
         distributions = (session.query(Distribution).options(
             joinedload(Distribution.student),
             joinedload(Distribution.adviser),
@@ -56,7 +56,7 @@ def login():
         username = request.form['username']
         password = request.form['password']
 
-        with Session() as db_session:
+        with DBSession() as db_session:
             if username == ADMIN_USERNAME and check_password_hash(ADMIN_PASSWORD_HASH, password):
                 session['role'] = 'admin'
                 return redirect(url_for('index'))
@@ -111,6 +111,29 @@ def assign_importances():
 @app.route("/assign_advisers_to_themes", methods=["GET", "POST"])
 @role_required('admin')
 def assign_advisers_to_themes():
+    if request.method == 'GET':
+        # Получаем текущие назначения из базы данных
+        assignments = adviser_theme_repository.get_all(AdviserTheme)
+
+        # Формируем данные для шаблона
+        grouped_assignments = {}
+        for assignment in assignments:
+            if assignment.adviser_id not in grouped_assignments:
+                grouped_assignments[assignment.adviser_id] = []
+            grouped_assignments[assignment.adviser_id].append(assignment.theme_id)
+
+        # Получаем список научных руководителей и тем для выпадающих списков
+        advisers = adviser_repository.get_all(Adviser)
+        themes = theme_repository.get_all(Theme)
+
+        # Передаем данные в шаблон
+        return render_template(
+            "assign_advisers_to_themes.html",
+            grouped_assignments=grouped_assignments,
+            advisers=advisers,
+            themes=themes
+        )
+
     if request.method == 'POST':
         try:
             data = request.form
@@ -128,12 +151,13 @@ def assign_advisers_to_themes():
                     if adviser_index in advisers:
                         advisers[adviser_index]["themes"].extend(value)
 
-            for adviser_index in advisers:
-                adviser_id = advisers[adviser_index]["id"]
-                themes = advisers[adviser_index]["themes"]
+            db_session = DBSession()
 
-                # Проверяем существование записей
-                record_exists = session.query(
+            for adviser_index in advisers:
+                adviser_id = int(advisers[adviser_index]["id"])  # Преобразуем в целое число
+                themes = [int(theme) for theme in advisers[adviser_index]["themes"]]
+
+                record_exists = db_session.query(
                     exists().where(AdviserTheme.adviser_id == adviser_id)
                 ).scalar()
 
@@ -148,7 +172,6 @@ def assign_advisers_to_themes():
 
         except Exception as e:
             return f"Произошла ошибка: {e}", 500
-    return render_template("assign_advisers_to_themes.html")
 
 
 @app.route("/get_subjects")
@@ -248,7 +271,7 @@ def save_priorities():
         logging.debug(f"Полученные приоритеты: {priorities}")
 
         # Обрабатываем каждую пару "тема — приоритет"
-        with Session() as db_session:
+        with DBSession() as db_session:
             # Удаляем все существующие записи для данного студента
             db_session.query(StudentThemeInterest).filter_by(student_id=student_id).delete()
             logging.debug(f"Удалены все записи для Студента ID {student_id}")
@@ -458,7 +481,7 @@ def upload_advisers():
 @app.route('/save_distributions', methods=['GET'])
 @role_required('admin')
 def save_distributions():
-    with Session() as session:
+    with DBSession() as session:
         distributions = (
             session.query(Distribution)
             .options(joinedload(Distribution.student),
