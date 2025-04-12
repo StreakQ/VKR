@@ -846,36 +846,64 @@ class DistributionAlgorithmRepository(BaseRepository):
         return False
 
     def handle_unassigned_students(self, unassigned_students, student_entries, advisers, adviser_themes,
-                                   adviser_assignments, distributions, session=None):
-        if session is None:
-            raise ValueError("Session должна быть передана для обновления данных в базе.")
+                                   adviser_assignments, distributions, session):
+        """
+        Обрабатывает студентов, которые остались нераспределенными.
+        Возвращает список студентов, которые так и не были назначены.
+        """
+        remain_students = set()  # Список для хранения оставшихся студентов
 
         for student_id in unassigned_students:
             available_themes = [theme_id for suit, theme_id, int_level in student_entries[student_id]]
+            logging.debug(f"Студент ID: {student_id}, Доступные темы: {available_themes}")
+
+            # Проверяем доступных научных руководителей по изначальным темам
             available_advisers = [
                 adv_id for adv_id in adviser_themes
-                if set(adviser_themes[adv_id]) & set(available_themes) and advisers[adv_id].number_of_places > 0
+                if set(adviser_themes[adv_id]) & set(available_themes) and len(adviser_assignments[adv_id]) < advisers[
+                    adv_id].number_of_places
             ]
+            logging.debug(
+                f"Студент ID: {student_id}, Доступные научные руководители по изначальным темам: {available_advisers}")
 
-            if available_advisers:
+            if not available_advisers:
+                # Если нет доступных научных руководителей по изначальным темам, ищем самого свободного
+                available_advisers = [
+                    adv_id for adv_id in advisers
+                    if len(adviser_assignments[adv_id]) < advisers[adv_id].number_of_places
+                ]
+                if available_advisers:
+                    best_adv = max(
+                        available_advisers,
+                        key=lambda x: (advisers[x].number_of_places - len(adviser_assignments[x]), x)
+                    )
+                    # Выбираем любую доступную тему у этого научного руководителя
+                    common_theme = adviser_themes[best_adv][0]
+                    logging.debug(
+                        f"Студент ID: {student_id} назначен к самому свободному научному руководителю ID: {best_adv}, Тема ID: {common_theme}")
+                else:
+                    logging.debug(f"Студент ID: {student_id} не может быть назначен ни к одному научному руководителю.")
+                    remain_students.add(student_id)
+                    continue
+            else:
+                # Если есть доступные научные руководители по изначальным темам, выбираем лучшего
                 best_adv = max(
                     available_advisers,
-                    key=lambda x: (advisers[x].number_of_places, x)
+                    key=lambda x: (advisers[x].number_of_places - len(adviser_assignments[x]), x)
                 )
                 common_theme = next(theme for theme in adviser_themes[best_adv] if theme in available_themes)
-                adviser_assignments[best_adv].append(student_id)
-                distributions.append({
-                    "theme_id": common_theme,
-                    "student_id": student_id,
-                    "adviser_id": best_adv
-                })
+                logging.debug(
+                    f"Студент ID: {student_id} назначен на Тему ID: {common_theme}, Научный руководитель ID: {best_adv}")
 
-                remain_students = unassigned_students - student_id
+            # Назначаем студента
+            adviser_assignments[best_adv].append(student_id)
+            distributions.append({
+                "student_id": student_id,
+                "theme_id": common_theme,
+                "adviser_id": best_adv
+            })
 
-                # Уменьшаем число мест у научного руководителя
-                adviser = advisers[best_adv]
-                adviser.number_of_places -= 1
-                session.commit()
+        return remain_students  # Возвращаем список оставшихся студентов
 
     def assign_students_to_advisers_and_distribute(self):
         sorted_results = self.link_weighted_grades_with_interest()
