@@ -97,6 +97,9 @@ class BaseRepository:
                 session.rollback()
                 logging.error(f"Ошибка при удалении записи: {e}")
 
+    def get_all_filtered(self, model, **filters):
+        with self.Session() as session:
+            return session.query(model).filter_by(**filters).all()
 
 class StudentRepository(BaseRepository):
     def add_student(self,username:str,password_hash:str, firstname: str, lastname: str, patronymic: str, group_student: str):
@@ -388,9 +391,17 @@ class AdviserThemeRepository(BaseRepository):
             session.commit()
 
     def update_adviser_themes(self, adviser_id, *new_theme_ids):
+        print(f"Обновление тем для научного руководителя ID {adviser_id}: {new_theme_ids}")
         with self.Session() as session:
+            # Удаляем старые темы
             session.query(AdviserTheme).filter(AdviserTheme.adviser_id == adviser_id).delete()
-            self.add_adviser_themes(adviser_id, *new_theme_ids)
+
+            # Добавляем новые темы
+            for theme_id in new_theme_ids:
+                new_adviser_theme = AdviserTheme(adviser_id=adviser_id, theme_id=theme_id)
+                session.add(new_adviser_theme)
+
+            session.commit()
 
 
 class ThemeSubjectImportanceRepository(BaseRepository):
@@ -598,7 +609,7 @@ class DistributionAlgorithmRepository(BaseRepository):
 
     def link_theme_subject_importance_with_student_subject_grade(self):
         suitability_scores = {}
-        with self.student_grade_record_repository.DBSession() as session:
+        with self.student_grade_record_repository.Session() as session:
             theme_subject_importance_records = session.query(ThemeSubjectImportance).all()
             student_subject_grade_records = session.query(StudentSubjectGrade).all()
 
@@ -645,7 +656,7 @@ class DistributionAlgorithmRepository(BaseRepository):
 
     def link_weighted_grades_with_interest(self):
         student_scores = {}  # Словарь для хранения данных о студентах
-        with self.student_theme_interest_repository.DBSession() as session:
+        with self.student_theme_interest_repository.Session() as session:
             suitability_scores = self.link_theme_subject_importance_with_student_subject_grade()
             student_theme_interests = session.query(StudentThemeInterest).all()
 

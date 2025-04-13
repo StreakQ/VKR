@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Назначение научным руководителям тем</title>
+  <title>Связь научных руководителей и тем</title>
   <style>
     table {
       width: 100%;
@@ -14,101 +14,213 @@
     th, td {
       padding: 8px;
       text-align: left;
+      word-wrap: break-word;
+      max-width: 300px;
     }
     .theme-row {
       margin-bottom: 5px;
     }
+    button {
+      padding: 7px;
+      border-radius: 3px;
+      font-size: 15px;
+      margin: 10px;
+    }
   </style>
 </head>
 <body>
-  <h1>Назначение научным руководителям тем</h1>
+  <h1>Связь научных руководителей и тем</h1>
 
-  <form id="advisers_to_themes_form" method="POST" action="/assign_advisers_to_themes">
-    <table id="advisers_to_themes_table">
+  <form id="adviser-theme-form" method="POST" action="/assign_advisers_to_themes">
+    <table id="adviser-theme-table">
       <thead>
         <tr>
           <th>Научный руководитель</th>
-          <th>Связанные темы</th>
-          <th>Действия</th>
+          <th>Темы</th>
         </tr>
       </thead>
       <tbody>
-        <!-- Отображение существующих назначений -->
-        {% for adviser_id, theme_ids in grouped_assignments.items() %}
-          <tr class="adviser-row">
-            <!-- Выпадающий список научных руководителей -->
-            <td>
-              <select name="adviser_{{ loop.index }}" class="adviser-dropdown">
-                {% for adviser in advisers %}
-                  <option value="{{ adviser.adviser_id }}"
-                    {% if adviser.adviser_id == adviser_id %}selected{% endif %}>
-                    {{ adviser.firstname }} {{ adviser.lastname }}
-                  </option>
-                {% endfor %}
-              </select>
-            </td>
-            <!-- Темы -->
-            <td>
-              <div class="themes-container">
-                {% for theme_id in theme_ids %}
-                  <div class="theme-row">
-                    <select name="theme_{{ loop.index0 }}[]" class="theme-dropdown">
-                      {% for theme in themes %}
-                        <option value="{{ theme.theme_id }}"
-                          {% if theme.theme_id == theme_id %}selected{% endif %}>
-                          {{ theme.theme_name }}
-                        </option>
-                      {% endfor %}
-                    </select>
-                    <button type="button" onclick="removeThemeRow(this)">Удалить</button>
-                  </div>
-                {% endfor %}
-              </div>
-              <button type="button" onclick="addThemeRow(this)">Добавить тему</button>
-            </td>
-            <!-- Действия -->
-            <td>
-              <button type="button" onclick="removeAdviserRow(this)">Удалить</button>
-            </td>
-          </tr>
-        {% endfor %}
+        <!-- Строки будут добавляться динамически -->
       </tbody>
     </table>
-    <button type="button" onclick="addAdviserWithThemes()">Добавить научного руководителя</button>
     <button type="submit">Сохранить</button>
+    <button type="button" onclick="addAdviserWithThemes()">Добавить научного руководителя</button>
   </form>
 
   <script>
+    // Массивы для хранения научных руководителей и тем
+    let advisers = [];
+    let themes = [];
+
+    // Загружаем научных руководителей с сервера
+    async function loadAdvisers() {
+      try {
+        const response = await fetch("/get_advisers");
+        if (!response.ok) {
+          throw new Error("Ошибка при загрузке научных руководителей");
+        }
+        advisers = await response.json();
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
+    // Загружаем темы с сервера
+    async function loadThemes() {
+      try {
+        const response = await fetch("/get_themes");
+        if (!response.ok) {
+          throw new Error("Ошибка при загрузке тем");
+        }
+        themes = await response.json();
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
+    // Загружаем текущие назначения научных руководителей и тем
+    async function loadAssignments() {
+      try {
+        const response = await fetch("/get_adviser_theme_assignments");
+        if (!response.ok) {
+          throw new Error("Ошибка при загрузке назначений");
+        }
+        const assignments = await response.json();
+
+        // Создаем словарь для быстрого поиска тем по adviser_id
+        const assignmentsByAdviserId = {};
+        assignments.forEach(assignment => {
+          if (!assignmentsByAdviserId[assignment.adviser_id]) {
+            assignmentsByAdviserId[assignment.adviser_id] = [];
+          }
+          assignmentsByAdviserId[assignment.adviser_id].push(assignment.theme_id);
+        });
+
+        // Отображаем назначения в таблице
+        const tableBody = document.querySelector("#adviser-theme-table tbody");
+        advisers.forEach((adviser, index) => {
+          // Создаем строку для научного руководителя
+          const adviserRow = document.createElement("tr");
+
+          // Ячейка с именем научного руководителя
+          const adviserNameCell = document.createElement("td");
+          const adviserNameInput = document.createElement("input");
+          adviserNameInput.type = "hidden";
+          adviserNameInput.name = `adviser_${index}`;
+          adviserNameInput.value = adviser.id; // Передаем ID, а не имя
+          adviserNameCell.appendChild(adviserNameInput);
+
+          const adviserNameDiv = document.createElement("div");
+          adviserNameDiv.textContent = `${adviser.firstname} ${adviser.lastname} ${adviser.patronymic || ''}`.trim();
+          adviserNameCell.appendChild(adviserNameDiv);
+          adviserRow.appendChild(adviserNameCell);
+
+          // Ячейка для тем
+          const themesCell = document.createElement("td");
+          const themesContainer = document.createElement("div");
+          themesContainer.className = "themes-container";
+
+          // Добавляем существующие темы
+          if (assignmentsByAdviserId[adviser.id]) {
+            assignmentsByAdviserId[adviser.id].forEach(themeId => {
+              addThemeRow(themesContainer, index, themeId);
+            });
+          }
+
+          // Кнопка добавления темы
+          const addThemeButton = document.createElement("button");
+          addThemeButton.type = "button";
+          addThemeButton.textContent = "Добавить тему";
+          addThemeButton.onclick = () => addThemeRow(themesContainer, index);
+          themesCell.appendChild(addThemeButton);
+
+          themesCell.appendChild(themesContainer);
+          adviserRow.appendChild(themesCell);
+
+          tableBody.appendChild(adviserRow);
+        });
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
+    // Функция для создания выпадающего списка тем
+    function createThemeDropdown(adviserIndex) {
+      const select = document.createElement("select");
+      select.name = `theme_${adviserIndex}[]`;
+      select.className = "theme-dropdown";
+
+      // Добавляем пустой вариант
+      const defaultOption = document.createElement("option");
+      defaultOption.value = "";
+      defaultOption.text = "-- Выберите тему --";
+      select.appendChild(defaultOption);
+
+      // Добавляем темы
+      themes.forEach(theme => {
+        const option = document.createElement("option");
+        option.value = theme.id;
+        option.text = theme.name;
+        select.appendChild(option);
+      });
+
+      return select;
+    }
+
+    // Функция для добавления строки с темой
+    function addThemeRow(container, adviserIndex, preselectedThemeId = null) {
+      const themeRow = document.createElement("div");
+      themeRow.className = "theme-row";
+
+      // Выпадающий список тем
+      const themeDropdown = createThemeDropdown(adviserIndex);
+      if (preselectedThemeId) {
+        themeDropdown.value = preselectedThemeId; // Устанавливаем выбранный ID темы
+      }
+      themeRow.appendChild(themeDropdown);
+
+      // Кнопка удаления
+      const removeButton = document.createElement("button");
+      removeButton.type = "button";
+      removeButton.textContent = "Удалить";
+      removeButton.onclick = () => themeRow.remove();
+      themeRow.appendChild(removeButton);
+
+      container.appendChild(themeRow);
+    }
+
     // Функция для добавления нового научного руководителя с темами
     function addAdviserWithThemes() {
-      const tableBody = document.querySelector("#advisers_to_themes_table tbody");
+      const tableBody = document.querySelector("#adviser-theme-table tbody");
 
-      // Создаем строку для научного руководителя
+      // Генерируем уникальный индекс
+      const newAdviserIndex = tableBody.children.length;
+
+      // Создаем строку для нового научного руководителя
       const adviserRow = document.createElement("tr");
-      adviserRow.className = "adviser-row";
 
       // Ячейка с выпадающим списком научных руководителей
-      const adviserCell = document.createElement("td");
-      const adviserSelect = document.createElement("select");
-      adviserSelect.name = "adviser_new";
-      adviserSelect.className = "adviser-dropdown";
+      const adviserNameCell = document.createElement("td");
+      const adviserDropdown = document.createElement("select");
+      adviserDropdown.name = `adviser_${newAdviserIndex}`;
+      adviserDropdown.className = "adviser-dropdown";
 
       // Добавляем пустой вариант
       const defaultOption = document.createElement("option");
       defaultOption.value = "";
       defaultOption.text = "-- Выберите научного руководителя --";
-      adviserSelect.appendChild(defaultOption);
+      adviserDropdown.appendChild(defaultOption);
 
       // Добавляем научных руководителей
-      {% for adviser in advisers %}
+      advisers.forEach(adviser => {
         const option = document.createElement("option");
-        option.value = "{{ adviser.adviser_id }}";
-        option.text = "{{ adviser.firstname }} {{ adviser.lastname }}";
-        adviserSelect.appendChild(option);
-      {% endfor %}
+        option.value = adviser.id;
+        option.text = `${adviser.firstname} ${adviser.lastname} ${adviser.patronymic || ''}`.trim();
+        adviserDropdown.appendChild(option);
+      });
 
-      adviserCell.appendChild(adviserSelect);
-      adviserRow.appendChild(adviserCell);
+      adviserNameCell.appendChild(adviserDropdown);
+      adviserRow.appendChild(adviserNameCell);
 
       // Ячейка для тем
       const themesCell = document.createElement("td");
@@ -119,71 +231,21 @@
       const addThemeButton = document.createElement("button");
       addThemeButton.type = "button";
       addThemeButton.textContent = "Добавить тему";
-      addThemeButton.onclick = () => addThemeRow(themesContainer);
-      themesCell.appendChild(themesContainer);
+      addThemeButton.onclick = () => addThemeRow(themesContainer, newAdviserIndex);
       themesCell.appendChild(addThemeButton);
 
+      themesCell.appendChild(themesContainer);
       adviserRow.appendChild(themesCell);
-
-      // Пустая ячейка для действий
-      const actionsCell = document.createElement("td");
-      const removeButton = document.createElement("button");
-      removeButton.type = "button";
-      removeButton.textContent = "Удалить";
-      removeButton.onclick = () => tableBody.removeChild(adviserRow);
-      actionsCell.appendChild(removeButton);
-
-      adviserRow.appendChild(actionsCell);
 
       tableBody.appendChild(adviserRow);
     }
 
-    // Функция для добавления строки с темой
-    function addThemeRow(container) {
-    const themeRow = document.createElement("div");
-    themeRow.className = "theme-row";
-
-    // Выпадающий список тем
-    const themeSelect = document.createElement("select");
-    themeSelect.name = "theme_new[]"; // Уникальное имя для новой темы
-    themeSelect.className = "theme-dropdown";
-
-    // Добавляем пустой вариант
-    const defaultOption = document.createElement("option");
-    defaultOption.value = "";
-    defaultOption.text = "-- Выберите тему --";
-    themeSelect.appendChild(defaultOption);
-
-    // Добавляем темы
-    {% for theme in themes %}
-      const option = document.createElement("option");
-      option.value = "{{ theme.theme_id }}";
-      option.text = "{{ theme.theme_name }}";
-      themeSelect.appendChild(option);
-    {% endfor %}
-
-    // Кнопка удаления темы
-    const removeButton = document.createElement("button");
-    removeButton.type = "button";
-    removeButton.textContent = "Удалить";
-    removeButton.onclick = () => container.removeChild(themeRow);
-
-    themeRow.appendChild(themeSelect);
-    themeRow.appendChild(removeButton);
-
-    container.appendChild(themeRow);
-  }
-    // Функция для удаления строки с научным руководителем
-    function removeAdviserRow(button) {
-      const row = button.closest("tr");
-      row.remove();
-    }
-
-    // Функция для удаления строки с темой
-    function removeThemeRow(button) {
-      const row = button.closest(".theme-row");
-      row.remove();
-    }
+    // Загружаем данные при загрузке страницы
+    window.onload = async () => {
+      await loadAdvisers(); // Загружаем научных руководителей
+      await loadThemes();   // Загружаем темы
+      await loadAssignments(); // Загружаем назначения
+    };
   </script>
 </body>
 </html>

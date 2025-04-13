@@ -130,7 +130,7 @@
           const weightInput = document.createElement("input");
           weightInput.type = "number";
           weightInput.name = `weight_${index}`;
-          weightInput.step = "0.1";
+          weightInput.step = "0.01";
           weightInput.value = importance.weight; // Устанавливаем вес
           subjectRow.appendChild(weightInput);
 
@@ -198,7 +198,7 @@
       const weightInput = document.createElement("input");
       weightInput.type = "number";
       weightInput.name = `weight_${themeIndex}`;
-      weightInput.step = "0.1";
+      weightInput.step = "0.01";
       weightInput.placeholder = "Вес";
       subjectRow.appendChild(weightInput);
 

@@ -70,6 +70,21 @@ def login():
         return "Неверный логин или пароль", 401
 
 
+@app.route("/get_adviser_theme_assignments", methods=["GET"])
+@role_required('admin')
+def get_adviser_theme_assignments():
+    try:
+        assignments = adviser_theme_repository.get_all(AdviserTheme)
+        result = [
+            {"adviser_id": assignment.adviser_id, "theme_id": assignment.theme_id}
+            for assignment in assignments
+        ]
+        return jsonify(result), 200
+    except Exception as e:
+        logging.error(f"Ошибка при получении назначений: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route('/assign_importances', methods=["GET", "POST"])
 @role_required('admin')
 def assign_importances():
@@ -112,17 +127,14 @@ def assign_importances():
 @role_required('admin')
 def assign_advisers_to_themes():
     if request.method == 'GET':
-        # Получаем текущие назначения из базы данных
         assignments = adviser_theme_repository.get_all(AdviserTheme)
 
-        # Формируем данные для шаблона
         grouped_assignments = {}
         for assignment in assignments:
             if assignment.adviser_id not in grouped_assignments:
                 grouped_assignments[assignment.adviser_id] = []
             grouped_assignments[assignment.adviser_id].append(assignment.theme_id)
 
-        # Получаем список научных руководителей и тем для выпадающих списков
         advisers = adviser_repository.get_all(Adviser)
         themes = theme_repository.get_all(Theme)
 
@@ -137,41 +149,49 @@ def assign_advisers_to_themes():
     if request.method == 'POST':
         try:
             data = request.form
-            print("Полученные данные:", data)
+            # print("Полученные данные из формы:", data)
+            # print("Парсинг данных из формы:")
+            # for key, values in data.lists():
+            #     print(f"{key}: {values}")
 
             advisers = {}
             for key, value in data.items():
-                if key.startswith("adviser"):
+                if key.startswith("adviser_"):
                     adviser_index = key.split("_")[-1]
                     advisers[adviser_index] = {"id": value, "themes": []}
 
-            for key, value in data.lists():
-                if key.startswith("theme"):
-                    adviser_index = key.split("_")[-1]
+
+            for key, values in data.lists():
+                if key.startswith("theme_"):
+                    adviser_index = key.split("_")[1].split("[")[0]
                     if adviser_index in advisers:
-                        advisers[adviser_index]["themes"].extend(value)
+                        advisers[adviser_index]["themes"].extend(values)
+
+            # print("Парсинг данных:")
+            # print(advisers)
+            # for adviser_index, adviser_data in advisers.items():
+            #     print(f"Научный руководитель {adviser_index}: ID={adviser_data['id']}, Темы={adviser_data['themes']}")
 
             db_session = DBSession()
 
             for adviser_index in advisers:
-                adviser_id = int(advisers[adviser_index]["id"])  # Преобразуем в целое число
+                adviser_id = int(advisers[adviser_index]["id"])
                 themes = [int(theme) for theme in advisers[adviser_index]["themes"]]
 
-                record_exists = db_session.query(
-                    exists().where(AdviserTheme.adviser_id == adviser_id)
-                ).scalar()
+                #print(f"Обновление тем для научного руководителя ID {adviser_id}: {themes}")
 
-                if record_exists:
-                    print(f"Обновление тем для научного руководителя ID {adviser_id}: {themes}")
-                    adviser_theme_repository.update_adviser_themes(adviser_id=adviser_id, *themes)
+                # Обновляем темы
+                if themes:
+                    adviser_theme_repository.update_adviser_themes(adviser_id, *themes)
                 else:
-                    print(f"Добавление тем для научного руководителя ID {adviser_id}: {themes}")
-                    adviser_theme_repository.add_adviser_themes(adviser_id=adviser_id, *themes)
+                    print(f"Нет тем для научного руководителя ID {adviser_id}")
 
-            return "Данные успешно сохранены!", 200
+            return redirect(url_for("index"))
 
         except Exception as e:
+            db_session.rollback()
             return f"Произошла ошибка: {e}", 500
+
 
 
 @app.route("/get_subjects")
@@ -203,10 +223,18 @@ def get_themes():
 def get_advisers():
     try:
         advisers = adviser_repository.get_all(Adviser)
-        advisers_list = [{"id": adviser.adviser_id, "name": adviser.firstname}for adviser in advisers]
+        advisers_list = [
+            {
+                "id": adviser.adviser_id,
+                "firstname": adviser.firstname,
+                "lastname": adviser.lastname,
+            }
+            for adviser in advisers
+        ]
         return jsonify(advisers_list), 200
     except Exception as e:
-        logging.error(f"Ошибка при получении научных руководителей")
+        logging.error(f"Ошибка при получении научных руководителей: {e}")
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/get_theme_subject_importances", methods=["GET"])
