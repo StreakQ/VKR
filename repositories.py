@@ -13,6 +13,7 @@ from werkzeug.security import check_password_hash
 
 fake = Faker('ru_RU')
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 
 class BaseRepository:
@@ -431,7 +432,7 @@ class ThemeSubjectImportanceRepository(BaseRepository):
                         weight=weight
                     )
                     session.add(new_record)
-                    print(f"Добавлено: Тема ID: {theme_id}, Предмет ID: {subject_id}, Вес: {weight}")
+                    #print(f"Добавлено: Тема ID: {theme_id}, Предмет ID: {subject_id}, Вес: {weight}")
 
                 session.commit()  # Сохраняем изменения
             except Exception as e:
@@ -865,46 +866,31 @@ class DistributionAlgorithmRepository(BaseRepository):
         remain_students = set()  # Список для хранения оставшихся студентов
 
         for student_id in unassigned_students:
-            available_themes = [theme_id for suit, theme_id, int_level in student_entries[student_id]]
-            logging.debug(f"Студент ID: {student_id}, Доступные темы: {available_themes}")
+            logging.debug(f"Обработка нераспределенного Студента ID: {student_id}")
 
-            # Проверяем доступных научных руководителей по изначальным темам
+            available_themes = [theme_id for suit, theme_id, int_level in student_entries[student_id]]
+            logging.debug(f"Доступные темы для Студента ID: {student_id}: {available_themes}")
+
             available_advisers = [
                 adv_id for adv_id in adviser_themes
                 if set(adviser_themes[adv_id]) & set(available_themes) and len(adviser_assignments[adv_id]) < advisers[
                     adv_id].number_of_places
             ]
             logging.debug(
-                f"Студент ID: {student_id}, Доступные научные руководители по изначальным темам: {available_advisers}")
+                f"Доступные научные руководители для Студента ID: {student_id}: {available_advisers}")
 
             if not available_advisers:
-                # Если нет доступных научных руководителей по изначальным темам, ищем самого свободного
-                available_advisers = [
-                    adv_id for adv_id in advisers
-                    if len(adviser_assignments[adv_id]) < advisers[adv_id].number_of_places
-                ]
-                if available_advisers:
-                    best_adv = max(
-                        available_advisers,
-                        key=lambda x: (advisers[x].number_of_places - len(adviser_assignments[x]), x)
-                    )
-                    # Выбираем любую доступную тему у этого научного руководителя
-                    common_theme = adviser_themes[best_adv][0]
-                    logging.debug(
-                        f"Студент ID: {student_id} назначен к самому свободному научному руководителю ID: {best_adv}, Тема ID: {common_theme}")
-                else:
-                    logging.debug(f"Студент ID: {student_id} не может быть назначен ни к одному научному руководителю.")
-                    remain_students.add(student_id)
-                    continue
-            else:
-                # Если есть доступные научные руководители по изначальным темам, выбираем лучшего
-                best_adv = max(
-                    available_advisers,
-                    key=lambda x: (advisers[x].number_of_places - len(adviser_assignments[x]), x)
-                )
-                common_theme = next(theme for theme in adviser_themes[best_adv] if theme in available_themes)
-                logging.debug(
-                    f"Студент ID: {student_id} назначен на Тему ID: {common_theme}, Научный руководитель ID: {best_adv}")
+                logging.debug(f"Нет доступных научных руководителей для Студента ID: {student_id}")
+                remain_students.add(student_id)
+                continue
+
+            best_adv = max(
+                available_advisers,
+                key=lambda x: (advisers[x].number_of_places - len(adviser_assignments[x]), x)
+            )
+            common_theme = next(theme for theme in adviser_themes[best_adv] if theme in available_themes)
+            logging.debug(
+                f"Студент ID: {student_id} назначен на Тему ID: {common_theme}, Научный руководитель ID: {best_adv}")
 
             # Назначаем студента
             adviser_assignments[best_adv].append(student_id)

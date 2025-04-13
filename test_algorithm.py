@@ -14,75 +14,84 @@ class TestAlgorithm(unittest.TestCase):
         logging.debug("Инициализация тестового окружения...")
 
         # Моки для репозиториев
-        self.mock_student_theme_interest_repository = MagicMock()
-        self.mock_adviser_theme_repository = MagicMock()
-        self.mock_distribution_repository = MagicMock()
-        self.mock_student_subject_grade_repository = MagicMock()
-        self.mock_theme_subject_importance_repository = MagicMock()
+        self.mock_distribution_repository = MagicMock()  # Для сохранения распределений
+        self.mock_student_grade_record_repository = MagicMock()  # Оценки студентов по предметам
+        self.mock_student_theme_interest_repository = MagicMock()  # Интересы студентов к темам
+        self.mock_theme_subject_importance_repository = MagicMock()  # Важность тем для предметов
+        self.mock_adviser_theme_repository = MagicMock()  # Связи научных руководителей и тем
 
         # Мокированные данные для интересов студентов
         self.mock_student_theme_interest_repository.get_all.return_value = [
-            {"student_id": 1, "theme_id": 1, "interest_level": 1},  # Все студенты хотят одну и ту же тему
-            {"student_id": 2, "theme_id": 1, "interest_level": 1},
-            {"student_id": 3, "theme_id": 1, "interest_level": 1},
-            {"student_id": 4, "theme_id": 1, "interest_level": 1},
-            {"student_id": 5, "theme_id": 1, "interest_level": 1},
-            {"student_id": 1, "theme_id": 2, "interest_level": 2},  # Уникальная тема для второго руководителя
-            {"student_id": 2, "theme_id": 3, "interest_level": 3},  # Уникальная тема для третьего руководителя
-            {"student_id": 3, "theme_id": 4, "interest_level": 4},  # Уникальная тема для четвертого руководителя
-            {"student_id": 4, "theme_id": 5, "interest_level": 5},  # Уникальная тема для пятого руководителя
-            {"student_id": 5, "theme_id": 6, "interest_level": 5},  # Уникальная тема для шестого руководителя
+            {"student_id": 1, "theme_id": 1, "interest_level": 1},  # Первый студент интересуется темой 1 (уровень 1)
+            {"student_id": 1, "theme_id": 2, "interest_level": 2},  # Первый студент интересуется темой 2 (уровень 2)
+            {"student_id": 2, "theme_id": 1, "interest_level": 1},  # Второй студент интересуется темой 1 (уровень 1)
+            {"student_id": 2, "theme_id": 3, "interest_level": 2},  # Второй студент интересуется темой 3 (уровень 2)
+            {"student_id": 3, "theme_id": 1, "interest_level": 1},  # Третий студент интересуется темой 1 (уровень 1)
+            {"student_id": 3, "theme_id": 4, "interest_level": 2},  # Третий студент интересуется темой 4 (уровень 2)
         ]
         logging.debug("Мокированные данные для интересов студентов успешно настроены.")
 
         # Мокированные данные для связей научных руководителей и тем
         self.mock_adviser_theme_repository.get_all.return_value = [
-            {"adviser_id": 1, "theme_id": 1},  # Первый руководитель имеет только одну тему
-            {"adviser_id": 2, "theme_id": 2},  # Второй руководитель имеет уникальную тему
-            {"adviser_id": 3, "theme_id": 3},  # Третий руководитель имеет уникальную тему
-            {"adviser_id": 4, "theme_id": 4},  # Четвертый руководитель имеет уникальную тему
-            {"adviser_id": 5, "theme_id": 5},  # Пятый руководитель имеет уникальную тему
-            {"adviser_id": 6, "theme_id": 6},  # Шестой руководитель имеет уникальную тему
+            {"adviser_id": 1, "theme_id": 1},
+            {"adviser_id": 2, "theme_id": 2},
+            {"adviser_id": 3, "theme_id": 3},
+            {"adviser_id": 4, "theme_id": 4},
         ]
         logging.debug("Мокированные данные для связей научных руководителей и тем успешно настроены.")
 
-        # Мокированные данные для научных руководителей
-        self.mock_adviser_repository = MagicMock()
-        self.mock_adviser_repository.get_all.return_value = [
-            {"adviser_id": 1, "number_of_places": 1},  # У первого руководителя только одно место
-            {"adviser_id": 2, "number_of_places": 1},
-            {"adviser_id": 3, "number_of_places": 1},
-            {"adviser_id": 4, "number_of_places": 1},
-            {"adviser_id": 5, "number_of_places": 1},
-            {"adviser_id": 6, "number_of_places": 1},
+        # Мокированные данные для оценок студентов по предметам
+        self.mock_student_grade_record_repository.get_all.return_value = [
+            {"student_id": 1, "subject_id": 1, "grade": 5},
+            {"student_id": 1, "subject_id": 2, "grade": 4},
+            {"student_id": 2, "subject_id": 1, "grade": 4},
+            {"student_id": 2, "subject_id": 2, "grade": 5},
+            {"student_id": 3, "subject_id": 1, "grade": 3},
+            {"student_id": 3, "subject_id": 2, "grade": 4},
         ]
-        logging.debug("Мокированные данные для научных руководителей успешно настроены.")
+        logging.debug("Мокированные данные для оценок студентов по предметам успешно настроены.")
+
+        # Мокированные данные для важности тем для предметов
+        self.mock_theme_subject_importance_repository.get_all.return_value = [
+            {"theme_id": 1, "subject_id": 1, "weight": 0.8},
+            {"theme_id": 1, "subject_id": 2, "weight": 0.2},
+            {"theme_id": 2, "subject_id": 1, "weight": 0.7},
+            {"theme_id": 2, "subject_id": 2, "weight": 0.3},
+            {"theme_id": 3, "subject_id": 1, "weight": 0.6},
+            {"theme_id": 3, "subject_id": 2, "weight": 0.4},
+            {"theme_id": 4, "subject_id": 1, "weight": 0.5},
+            {"theme_id": 4, "subject_id": 2, "weight": 0.5},
+        ]
+        logging.debug("Мокированные данные для важности тем успешно настроены.")
 
         # Создание экземпляра класса DistributionAlgorithmRepository
         self.distribution_algorithm = DistributionAlgorithmRepository(
             engine=MagicMock(),
+            student_subject_grade_repository=self.mock_student_grade_record_repository,
             student_theme_interest_repository=self.mock_student_theme_interest_repository,
+            theme_subject_importance_repository=self.mock_theme_subject_importance_repository,
             adviser_theme_repository=self.mock_adviser_theme_repository,
-            distribution_repository=self.mock_distribution_repository,
-            student_subject_grade_repository=self.mock_student_subject_grade_repository,
-            theme_subject_importance_repository=self.mock_theme_subject_importance_repository
+            distribution_repository=self.mock_distribution_repository
         )
         logging.debug("Экземпляр DistributionAlgorithmRepository успешно создан.")
 
-    def test_redistribution_when_all_students_want_the_same_theme(self):
+    def test_replacement_mechanism(self):
         """
-        Тестирование алгоритма перераспределения студентов,
-        когда все хотят одну и ту же тему, но у первого руководителя ограниченное количество мест.
+        Тестирование механизма переназначения студентов.
+        Проверяется, что на тему назначается самый подходящий студент,
+        даже если туда уже был кто-то назначен.
         """
-        logging.info("Запуск теста: test_redistribution_when_all_students_want_the_same_theme")
+        logging.info("Запуск теста: test_replacement_mechanism")
 
         try:
             # Логирование начального состояния
             logging.debug("Начальное состояние:")
             logging.debug(f"Интересы студентов: {self.mock_student_theme_interest_repository.get_all.return_value}")
+            logging.debug(f"Оценки студентов: {self.mock_student_grade_record_repository.get_all.return_value}")
+            logging.debug(f"Веса тем: {self.mock_theme_subject_importance_repository.get_all.return_value}")
             logging.debug(
-                f"Связи научных руководителей и тем: {self.mock_adviser_theme_repository.get_all.return_value}")
-            logging.debug(f"Научные руководители: {self.mock_adviser_repository.get_all.return_value}")
+                f"Связи научных руководителей и тем: {self.mock_adviser_theme_repository.get_all.return_value}"
+            )
 
             # Выполнение метода распределения
             logging.debug("Выполнение метода assign_students_to_advisers_and_distribute...")
@@ -94,7 +103,7 @@ class TestAlgorithm(unittest.TestCase):
             self.assertEqual(len(unassigned_students), 0, "Не все студенты были назначены.")
             logging.debug("Все студенты успешно назначены.")
 
-            # Проверка, что метод add_distribution был вызван
+            # Проверка вызова метода add_distribution
             logging.debug("Проверка вызова метода add_distribution...")
             self.mock_distribution_repository.add_distribution.assert_called()
             logging.debug("Метод add_distribution был вызван.")
@@ -140,6 +149,29 @@ class TestAlgorithm(unittest.TestCase):
                     record["theme_id"],
                     record["interest_level"]
                 ))
+
+            # Проверка, что на тему назначен самый подходящий студент
+            logging.debug("Проверка механизма переназначения...")
+            assigned_students_per_theme = {}
+            for record in final_distribution:
+                theme_id = record["theme_id"]
+                student_id = record["student_id"]
+                interest_level = record["interest_level"]
+
+                if theme_id not in assigned_students_per_theme:
+                    assigned_students_per_theme[theme_id] = []
+
+                assigned_students_per_theme[theme_id].append((student_id, interest_level))
+
+            # Проверяем, что на каждую тему назначен студент с максимальным уровнем интереса
+            for theme_id, students in assigned_students_per_theme.items():
+                logging.debug(f"Тема ID: {theme_id}, Назначенные студенты: {students}")
+                best_student = max(students, key=lambda x: x[1])  # Студент с максимальным уровнем интереса
+                logging.debug(f"Лучший студент для Темы ID: {theme_id}: {best_student}")
+
+                # Проверяем, что только один студент назначен на тему
+                self.assertEqual(len(students), 1, f"На Тему ID: {theme_id} назначено больше одного студента.")
+                self.assertEqual(students[0], best_student, f"На Тему ID: {theme_id} назначен не самый подходящий студент.")
 
             logging.info("Тест успешно завершен.")
 
